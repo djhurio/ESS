@@ -49,7 +49,9 @@ tabl <- list(tab_cntry, tab_stratify, tab_psu)
 names(tabl) <- c("cntry", "stratify", "psu")
 
 write.xlsx(tabl, file = "data/ESS7/ESS7-SDDF-tables.xlsx",
-           colWidths = "auto")
+           colWidths = "auto", firstRow = T,
+           headerStyle = createStyle(textDecoration = "bold",
+                                     halign = "center"))
 
 
 # Merge ####
@@ -98,6 +100,10 @@ tab
 # Valid values are from 0 to 10
 
 dat2[, .N, keyby = ppltrst]
+
+dcast(dat2, essround + cntry ~ ppltrst)
+
+dat2[!is.na(ppltrst), var(ppltrst), keyby = .(essround, cntry)]
 
 dat2[!is.na(ppltrst), .(ppltrst0 = weighted.mean(ppltrst, weight0),
                         ppltrst1 = weighted.mean(ppltrst, weight1),
@@ -159,5 +165,14 @@ tab_deff[, weight := paste0("weight", .id - 1)]
 
 names(tab_deff)
 
-dcast(tab_deff, essround_cntry + variable ~ weight,
-      value.var = c("estim", "se", "deff"))
+tab_deff_subsel <- dcast(tab_deff, essround_cntry + variable ~ weight,
+                         value.var = c("estim", "se", "deff"))
+tab_deff_subsel
+
+tabl <- list(tab_deff, tab_deff_subsel)
+names(tabl) <- c("all_estimates", "subselection")
+
+write.xlsx(tabl, file = "data/ESS7/ESS7-ppltrst-deff.xlsx",
+           colWidths = "auto", firstRow = T,
+           headerStyle = createStyle(textDecoration = "bold",
+                                     halign = "center"))

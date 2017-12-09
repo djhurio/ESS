@@ -258,7 +258,9 @@ tab_deff_subsel
 
 
 tab_deff_summary <- dcast(tab_deff, essround_cntry ~ weight,
-                          fun.aggregate = mean, na.rm = T, value.var = "deff")
+                          fun.aggregate = mean, na.rm = T,
+                          value.var = c("deff", "n_eff"))
+setorder(tab_deff_summary, deff_weight0)
 tab_deff_summary
 
 
@@ -266,11 +268,11 @@ tab_deff_summary
 tabl <- list(tab_deff, tab_deff_subsel, tab_deff_summary)
 names(tabl) <- c("all_estimates", "subselection", "summary")
 
-# write.xlsx(tabl[2:3], file = "results/ESS-deff.xlsx",
-#            colWidths = "auto", firstRow = T,
-#            headerStyle = createStyle(textDecoration = "bold",
-#                                      halign = "center"))
+write.xlsx(tabl, file = "results/ESS-deff.xlsx",
+           colWidths = "auto", firstRow = T,
+           headerStyle = createStyle(textDecoration = "bold",
+                                     halign = "center"))
 
-fwrite(tab_deff, file = "tables/tab_deff.csv", quote = T)
-fwrite(tab_deff_subsel, file = "tables/tab_deff_subsel.csv", quote = T)
-fwrite(tab_deff_summary, file = "tables/tab_deff_summary.csv", quote = T)
+fwrite(tab_deff, file = "results/tab_deff.csv", quote = T)
+fwrite(tab_deff_subsel, file = "results/tab_deff_subsel.csv", quote = T)
+fwrite(tab_deff_summary, file = "results/tab_deff_summary.csv", quote = T)

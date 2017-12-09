@@ -1,0 +1,103 @@
+"file","varname","is.available","values"
+"vars-core-binary.txt","vote",TRUE,"1, 2, 3"
+"vars-core-binary.txt","clsprty",TRUE,"1, 2"
+"vars-core-binary.txt","mmbprty",FALSE,
+"vars-core-binary.txt","inmdisc",FALSE,
+"vars-core-binary.txt","crmvct",TRUE,"1, 2"
+"vars-core-binary.txt","rlgblg",TRUE,"1, 2"
+"vars-core-binary.txt","rlgblge",TRUE,"1, 2"
+"vars-core-binary.txt","dscrgrp",TRUE,"1, 2"
+"vars-core-binary.txt","dscrrce",TRUE,"0, 1"
+"vars-core-binary.txt","dscrntn",TRUE,"0, 1"
+"vars-core-binary.txt","dscrrlg",TRUE,"0, 1"
+"vars-core-binary.txt","dscrlng",TRUE,"0, 1"
+"vars-core-binary.txt","dscretn",TRUE,"0, 1"
+"vars-core-binary.txt","dscrage",TRUE,"0, 1"
+"vars-core-binary.txt","dscrgnd",TRUE,"0, 1"
+"vars-core-binary.txt","dscrsex",TRUE,"0, 1"
+"vars-core-binary.txt","dscrdsb",TRUE,"0, 1"
+"vars-core-binary.txt","dscroth",TRUE,"0, 1"
+"vars-core-binary.txt","dscrdk",TRUE,"0, 1"
+"vars-core-binary.txt","dscrref",TRUE,"0, 1"
+"vars-core-binary.txt","dscrnap",TRUE,"0, 1"
+"vars-core-binary.txt","dscrna",TRUE,"0, 1"
+"vars-core-binary.txt","ctzcntr",TRUE,"1, 2"
+"vars-core-binary.txt","brncntr",TRUE,"1, 2"
+"vars-core-binary.txt","facntr",TRUE,"1, 2"
+"vars-core-binary.txt","mocntr",TRUE,"1, 2"
+"vars-core-binary.txt","gndr",TRUE,"1, 2"
+"vars-core-binary.txt","hhmodwl",FALSE,
+"vars-core-binary.txt","crpdwk",TRUE,"1, 2"
+"vars-core-binary.txt","pdjobev",TRUE,"1, 2"
+"vars-core-binary.txt","emplrel",TRUE,"1, 2, 3"
+"vars-core-binary.txt","wrkac6m",TRUE,"1, 2"
+"vars-core-binary.txt","uemp3m",TRUE,"1, 2"
+"vars-core-binary.txt","uemp12m",TRUE,"1, 2"
+"vars-core-binary.txt","uemp5yr",TRUE,"1, 2"
+"vars-core-binary.txt","partner",FALSE,
+"vars-core-binary.txt","atncrse",TRUE,"1, 2"
+"vars-core-binary.txt","lvghw",FALSE,
+"vars-core-binary.txt","lvgoptn",FALSE,
+"vars-core-binary.txt","lvgptn",FALSE,
+"vars-core-binary.txt","lvgptne",FALSE,
+"vars-core-binary.txt","dvrcdev",FALSE,
+"vars-core-binary.txt","chldhhe",TRUE,"1, 2"
+"vars-core-binary.txt","moalv",FALSE,
+"vars-core-binary.txt","faalv",FALSE,
+"vars-core-contin.txt","hhmmb",TRUE,"1, 2, 3, 4, 5, 6"
+"vars-core-contin.txt","yrbrn",TRUE,"1926, 1948, 1949, 1959, 1964, 1983"
+"vars-core-contin.txt","rmhhus",FALSE,
+"vars-core-contin.txt","eduyrs",TRUE,"8, 10, 11, 12, 13, 14"
+"vars-core-contin.txt","pdjobyr",TRUE,"1979, 1996, 2005, 2010, 2015"
+"vars-core-contin.txt","emplno",TRUE,"0, 4, 5, 6, 10"
+"vars-core-contin.txt","njbspv",TRUE,"1, 2, 4, 7, 10"
+"vars-core-contin.txt","wkhct",TRUE,"25, 38, 39, 40, 55"
+"vars-core-contin.txt","wkhtot",TRUE,"39, 40, 43, 44, 55"
+"vars-core-contin.txt","pphincr",FALSE,
+"vars-core-contin.txt","emplnop",FALSE,
+"vars-core-contin.txt","njbspvp",FALSE,
+"vars-core-contin.txt","wkhtotp",TRUE,"15, 38, 39, 40, 46"
+"vars-core-likert.txt","ppltrst",TRUE,"0, 3, 5, 6, 7, 9"
+"vars-core-likert.txt","pplfair",TRUE,"3, 5, 6, 7, 8, 10"
+"vars-core-likert.txt","pplhlp",TRUE,"2, 3, 4, 5, 7, 8"
+"vars-core-likert.txt","polintr",TRUE,"1, 2, 3, 4"
+"vars-core-likert.txt","polcmpl",FALSE,
+"vars-core-likert.txt","poldcs",FALSE,
+"vars-core-likert.txt","trstprl",TRUE,"0, 1, 2, 3, 4, 7"
+"vars-core-likert.txt","trstlgl",TRUE,"1, 2, 4, 6, 7, 8"
+"vars-core-likert.txt","trstplc",TRUE,"4, 5, 6, 7, 8, 9"
+"vars-core-likert.txt","trstplt",TRUE,"0, 2, 3, 4, 5, 7"
+"vars-core-likert.txt","trstprt",TRUE,"0, 1, 2, 3, 4, 5"
+"vars-core-likert.txt","trstep",TRUE,"0, 1, 2, 3, 5, 6"
+"vars-core-likert.txt","trstun",TRUE,"0, 2, 3, 5, 6, 7"
+"vars-core-likert.txt","lrscale",TRUE,"0, 4, 5, 7, 10"
+"vars-core-likert.txt","stflife",TRUE,"3, 5, 7, 8, 9, 10"
+"vars-core-likert.txt","stfeco",TRUE,"1, 2, 3, 4, 5, 7"
+"vars-core-likert.txt","stfgov",TRUE,"1, 2, 3, 4, 5, 6"
+"vars-core-likert.txt","stfdem",TRUE,"2, 5, 6, 7, 9, 10"
+"vars-core-likert.txt","stfedu",TRUE,"1, 2, 3, 4, 5"
+"vars-core-likert.txt","stfhlth",TRUE,"3, 4, 6, 7, 8, 10"
+"vars-core-likert.txt","gincdif",TRUE,"1, 2, 3, 4, 5"
+"vars-core-likert.txt","freehms",TRUE,"1, 2, 3, 4, 5"
+"vars-core-likert.txt","prtyban",FALSE,
+"vars-core-likert.txt","scnsenv",FALSE,
+"vars-core-likert.txt","euftf",TRUE,"0, 2, 4, 5, 9, 10"
+"vars-core-likert.txt","imbgeco",TRUE,"0, 1, 3, 4, 5, 10"
+"vars-core-likert.txt","imueclt",TRUE,"0, 2, 3, 4, 5, 7"
+"vars-core-likert.txt","imwbcnt",TRUE,"1, 2, 3, 4, 5, 6"
+"vars-core-likert.txt","happy",TRUE,"4, 5, 7, 8, 9, 10"
+"vars-core-likert.txt","aesfdrk",TRUE,"1, 2, 3, 4"
+"vars-core-likert.txt","health",TRUE,"1, 2, 3, 4, 5"
+"vars-core-likert.txt","rlgdgr",TRUE,"2, 3, 4, 5, 6, 8"
+"vars-core-likert.txt","wkdcorga",TRUE,"0, 6, 7, 8, 9"
+"vars-core-likert.txt","iorgact",TRUE,"0, 1, 7, 8, 9"
+"vars-core-likert.txt","wkdcpce",FALSE,
+"vars-core-likert.txt","brwmny",FALSE,
+"vars-core-likert.txt","wkdcorp",FALSE,
+"vars-core-likert.txt","ioactp",FALSE,
+"vars-core-summary.txt","discrim",FALSE,
+"vars-core-summary.txt","satisfac",FALSE,
+"vars-core-summary.txt","pplok",FALSE,
+"vars-core-summary.txt","polact",FALSE,
+"vars-core-summary.txt","trustleg",FALSE,
+"vars-core-summary.txt","trustgov",FALSE,

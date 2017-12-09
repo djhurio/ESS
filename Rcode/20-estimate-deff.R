@@ -1,5 +1,14 @@
-# ESS7 ####
+# ESS design effect estimation ####
 
+# Options ####
+options(encoding = "UTF-8")
+options(stringsAsFactors = F)
+
+# Sys.getenv("R_ZIPCMD")
+Sys.getenv("R_ZIPCMD", "zip")
+Sys.setenv(R_ZIPCMD = "/usr/bin/zip")
+
+# Packages
 require(data.table)
 require(haven)
 require(openxlsx)
@@ -14,9 +23,8 @@ gc()
 
 # Load data ####
 
-load("data/ESS7/dat.Rdata")
-load("data/ESS7/datSDDF.Rdata")
-
+load("data/dat.Rdata")
+load("data/datSDDF.Rdata")
 
 
 # Sampling information ####
@@ -31,24 +39,37 @@ datSDDF[, .N, cntry][order(N)]
 
 str(datSDDF)
 
+datSDDF[, .N, keyby = domain]
 datSDDF[, .N, keyby = stratify]
+datSDDF[, .N, keyby = .(domain, stratify)]
 
-tab_cntry <- datSDDF[, .(n_strat = sum(!duplicated(stratify)),
+datSDDF[, .N, keyby = nchar(stratify)]
+
+m <- max(nchar(datSDDF$stratify))
+
+
+# Create strata variable from domain and stratify
+datSDDF[, strata := paste(domain, formatC(stratify, digits = m - 1, flag = 0),
+                          sep = "_")]
+datSDDF[, .N, keyby = .(domain, stratify, strata)]
+
+
+tab_cntry <- datSDDF[, .(n_strat = sum(!duplicated(strata)),
                          n_psu = sum(!duplicated(psu)),
                          n_resp = .N),
                      keyby = .(essround, edition, cntry)]
 
-tab_stratify <- datSDDF[, .(n_psu = sum(!duplicated(psu)),
-                            n_resp = .N),
-                        keyby = .(essround, edition, cntry, stratify)]
+tab_strata <- datSDDF[, .(n_psu = sum(!duplicated(psu)),
+                          n_resp = .N),
+                      keyby = .(essround, edition, cntry, strata)]
 
 tab_psu <- datSDDF[, .(n_resp = .N),
-                   keyby = .(essround, edition, cntry, stratify, psu)]
+                   keyby = .(essround, edition, cntry, strata, psu)]
 
-tabl <- list(tab_cntry, tab_stratify, tab_psu)
-names(tabl) <- c("cntry", "stratify", "psu")
+tabl <- list(tab_cntry, tab_strata, tab_psu)
+names(tabl) <- c("cntry", "strata", "psu")
 
-write.xlsx(tabl, file = "data/ESS7/ESS7-SDDF-tables.xlsx",
+write.xlsx(tabl, file = "results/SDDF-tables.xlsx",
            colWidths = "auto", firstRow = T,
            headerStyle = createStyle(textDecoration = "bold",
                                      halign = "center"))
@@ -95,65 +116,127 @@ tab[, paste0("p", 0:2) := lapply(.SD, function(x) round(x / weight2, 3)),
 tab
 
 
+# Variables ####
 
-# PPLTRST Most people can be trusted or you can't be too careful
-# Valid values are from 0 to 10
+variables <- lapply(list.files("variables", full.names = T), read.table)
+names(variables) <- list.files("variables")
 
-dat2[, .N, keyby = ppltrst]
+variables <- rbindlist(variables, idcol = "file")
+setnames(variables, "V1", "varname")
+variables[, varname := tolower(varname)]
+variables
 
-dcast(dat2, essround + cntry ~ ppltrst)
+variables[, is.available := varname %in% names(dat2)]
 
-dat2[!is.na(ppltrst), var(ppltrst), keyby = .(essround, cntry)]
+foo <- function(x) {
+  if (x %in% names(dat2)) {
+    paste(sort(head(unique(dat2[[x]]))), collapse = ", ")
+  } else {
+    NA_character_
+  }
+}
 
-dat2[!is.na(ppltrst), .(ppltrst0 = weighted.mean(ppltrst, weight0),
-                        ppltrst1 = weighted.mean(ppltrst, weight1),
-                        ppltrst2 = weighted.mean(ppltrst, weight2))]
+foo("vote")
+foo("asd")
 
-# Compute Y and Z variables
-dat2[, ppltrst_y := ifelse(is.na(ppltrst), 0L, ppltrst)]
-dat2[, ppltrst_z := as.integer(!is.na(ppltrst))]
+variables[, values := foo(varname), by = varname]
 
-dat2[, .(ppltrst0 = sum(ppltrst_y * weight0) / sum(ppltrst_z * weight0),
-         ppltrst1 = sum(ppltrst_y * weight1) / sum(ppltrst_z * weight1),
-         ppltrst2 = sum(ppltrst_y * weight2) / sum(ppltrst_z * weight2))]
+write.xlsx(variables, file = "results/variables.xlsx",
+           colWidths = "auto", firstRow = T,
+           headerStyle = createStyle(textDecoration = "bold",
+                                     halign = "center"))
+fwrite(variables, file = "tables/variables.csv", quote = T)
 
-dat2[!is.na(ppltrst), .(ppltrst0 = weighted.mean(ppltrst, weight0),
-                        ppltrst1 = weighted.mean(ppltrst, weight1),
-                        ppltrst2 = weighted.mean(ppltrst, weight2)),
-     keyby = .(essround, cntry)]
 
-dat2[, .(ppltrst0 = sum(ppltrst_y * weight0) / sum(ppltrst_z * weight0),
-         ppltrst1 = sum(ppltrst_y * weight1) / sum(ppltrst_z * weight1),
-         ppltrst2 = sum(ppltrst_y * weight2) / sum(ppltrst_z * weight2)),
-     keyby = .(essround, cntry)]
+variables[, .N, keyby = is.available]
 
-dat2[, .N, keyby = stratify]
+vars_binary <- variables[grepl("binary", file) & (is.available), varname]
+vars_other <- variables[!grepl("binary", file) & (is.available), varname]
 
-tab <- dat2[, .(n = .N, pop0 = sum(weight0),
+
+dat3 <- copy(dat2)
+
+y_vars_binary <- paste("y", vars_binary, sep = "_")
+z_vars_binary <- paste("z", vars_binary, sep = "_")
+
+y_vars_other <- paste("y", vars_other, sep = "_")
+z_vars_other <- paste("z", vars_other, sep = "_")
+
+dat3[, c(y_vars_binary) := lapply(.SD, function(x) as.integer(!is.na(x) & x == 1)),
+     .SDcols = vars_binary]
+dat3[, c(z_vars_binary) := lapply(.SD, function(x) as.integer(!is.na(x))),
+     .SDcols = vars_binary]
+
+dat3[, c(y_vars_other) := lapply(.SD, function(x) ifelse(!is.na(x), x, 0)),
+     .SDcols = vars_other]
+dat3[, c(z_vars_other) := lapply(.SD, function(x) as.integer(!is.na(x))),
+     .SDcols = vars_other]
+
+lapply(vars_binary, function(x) dat3[, .N, keyby = c(x, paste0("y_", x), paste0("z_", x))])
+lapply(vars_other, function(x) dat3[, .N, keyby = c(x, paste0("y_", x), paste0("z_", x))])
+
+
+# # PPLTRST Most people can be trusted or you can't be too careful
+# # Valid values are from 0 to 10
+#
+# dat2[, .N, keyby = ppltrst]
+#
+# dcast(dat2, essround + cntry ~ ppltrst)
+#
+# dat2[!is.na(ppltrst), var(ppltrst), keyby = .(essround, cntry)]
+#
+# dat2[!is.na(ppltrst), .(ppltrst0 = weighted.mean(ppltrst, weight0),
+#                         ppltrst1 = weighted.mean(ppltrst, weight1),
+#                         ppltrst2 = weighted.mean(ppltrst, weight2))]
+#
+# # Compute Y and Z variables
+# dat2[, ppltrst_y := ifelse(is.na(ppltrst), 0L, ppltrst)]
+# dat2[, ppltrst_z := as.integer(!is.na(ppltrst))]
+#
+# dat2[, .(ppltrst0 = sum(ppltrst_y * weight0) / sum(ppltrst_z * weight0),
+#          ppltrst1 = sum(ppltrst_y * weight1) / sum(ppltrst_z * weight1),
+#          ppltrst2 = sum(ppltrst_y * weight2) / sum(ppltrst_z * weight2))]
+#
+# dat2[!is.na(ppltrst), .(ppltrst0 = weighted.mean(ppltrst, weight0),
+#                         ppltrst1 = weighted.mean(ppltrst, weight1),
+#                         ppltrst2 = weighted.mean(ppltrst, weight2)),
+#      keyby = .(essround, cntry)]
+#
+# dat2[, .(ppltrst0 = sum(ppltrst_y * weight0) / sum(ppltrst_z * weight0),
+#          ppltrst1 = sum(ppltrst_y * weight1) / sum(ppltrst_z * weight1),
+#          ppltrst2 = sum(ppltrst_y * weight2) / sum(ppltrst_z * weight2)),
+#      keyby = .(essround, cntry)]
+
+dat3[, .N, keyby = strata]
+
+tab <- dat3[, .(n = .N, pop0 = sum(weight0),
                 pop1 = sum(weight1), pop2 = sum(weight2)),
-            keyby = .(essround, cntry, stratify, psu)]
+            keyby = .(essround, cntry, strata, psu)]
 tab <- tab[, .(n = .N, pop0 = sum(pop0), pop1 = sum(pop1), pop2 = sum(pop2)),
-           keyby = .(essround, cntry, stratify)]
+           keyby = .(essround, cntry, strata)]
 tab
 tab[n == 1 & pop0 > 1]
 
-dat2[, essround_cntry := paste("ESS", essround, cntry, sep = "_")]
-dat2[, .N, keyby = essround_cntry]
+dat3[, essround_cntry := paste("ESS", essround, cntry, sep = "_")]
+dat3[, .N, keyby = essround_cntry]
 
-tab_deff0 <- vardom(Y = "ppltrst_y", Z = "ppltrst_z",
-                    H = "stratify", PSU = "psu", w_final = "weight0",
-                    period = "essround_cntry", fh_zero = TRUE,
-                    dataset = dat2)
+y_vars <- c(y_vars_binary, y_vars_other)
+z_vars <- c(z_vars_binary, z_vars_other)
 
-tab_deff1 <- vardom(Y = "ppltrst_y", Z = "ppltrst_z",
-                    H = "stratify", PSU = "psu", w_final = "weight1",
+tab_deff0 <- vardom(Y = y_vars, Z = z_vars,
+                    H = "strata", PSU = "psu", w_final = "weight0",
                     period = "essround_cntry", fh_zero = TRUE,
-                    dataset = dat2)
+                    dataset = dat3)
 
-tab_deff2 <- vardom(Y = "ppltrst_y", Z = "ppltrst_z",
-                    H = "stratify", PSU = "psu", w_final = "weight2",
+tab_deff1 <- vardom(Y = y_vars, Z = z_vars,
+                    H = "strata", PSU = "psu", w_final = "weight1",
                     period = "essround_cntry", fh_zero = TRUE,
-                    dataset = dat2)
+                    dataset = dat3)
+
+tab_deff2 <- vardom(Y = y_vars, Z = z_vars,
+                    H = "strata", PSU = "psu", w_final = "weight2",
+                    period = "essround_cntry", fh_zero = TRUE,
+                    dataset = dat3)
 
 tab_deff <- rbindlist(list(tab_deff0$all_result,
                            tab_deff1$all_result,
@@ -163,16 +246,31 @@ tab_deff[, .N, keyby = .id]
 
 tab_deff[, weight := paste0("weight", .id - 1)]
 
+setorder(tab_deff, essround_cntry, weight)
+
+
+
 names(tab_deff)
 
 tab_deff_subsel <- dcast(tab_deff, essround_cntry + variable ~ weight,
                          value.var = c("estim", "se", "deff"))
 tab_deff_subsel
 
-tabl <- list(tab_deff, tab_deff_subsel)
-names(tabl) <- c("all_estimates", "subselection")
 
-write.xlsx(tabl, file = "data/ESS7/ESS7-ppltrst-deff.xlsx",
-           colWidths = "auto", firstRow = T,
-           headerStyle = createStyle(textDecoration = "bold",
-                                     halign = "center"))
+tab_deff_summary <- dcast(tab_deff, essround_cntry ~ weight,
+                          fun.aggregate = mean, na.rm = T, value.var = "deff")
+tab_deff_summary
+
+
+
+tabl <- list(tab_deff, tab_deff_subsel, tab_deff_summary)
+names(tabl) <- c("all_estimates", "subselection", "summary")
+
+# write.xlsx(tabl[2:3], file = "results/ESS-deff.xlsx",
+#            colWidths = "auto", firstRow = T,
+#            headerStyle = createStyle(textDecoration = "bold",
+#                                      halign = "center"))
+
+fwrite(tab_deff, file = "tables/tab_deff.csv", quote = T)
+fwrite(tab_deff_subsel, file = "tables/tab_deff_subsel.csv", quote = T)
+fwrite(tab_deff_summary, file = "tables/tab_deff_summary.csv", quote = T)

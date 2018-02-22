@@ -23,13 +23,13 @@ gc()
 # dat <- read_dta("data/ESS7/ESS7e02_1.stata/ESS7e02_1.dta", encoding = "UTF-8")
 
 # SPSS
-# dat7 <- read_sav("data/ESS7/ESS7e02_1.spss/ESS7e02_1.sav")
-# dat8 <- read_sav("data/ESS8/ESS8e01.sav")
-# dat <- rbindlist(list(dat7, dat8), fill = T)
+dat7 <- read_sav("data/ESS7/ESS7e02_1.spss/ESS7e02_1.sav")
+dat8 <- read_sav("data/ESS8/ESS8e01.sav")
+dat <- rbindlist(list(dat7, dat8), fill = T)
 
 # ess package
-dat <- ess_rounds(rounds = 7:8, your_email = "martins.liberts@gmail.com")
-dat <- rbindlist(dat, fill = T)
+# dat <- ess_rounds(rounds = 7:8, your_email = "martins.liberts@gmail.com")
+# dat <- rbindlist(dat, fill = T)
 
 dat
 

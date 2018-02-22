@@ -5,14 +5,16 @@ options(encoding = "UTF-8")
 options(stringsAsFactors = F)
 
 # Sys.getenv("R_ZIPCMD")
-Sys.getenv("R_ZIPCMD", "zip")
-Sys.setenv(R_ZIPCMD = "/usr/bin/zip")
+# Sys.getenv("R_ZIPCMD", "zip")
+# Sys.setenv(R_ZIPCMD = "/usr/bin/zip")
 
 # Packages
 require(data.table)
 require(haven)
 require(openxlsx)
 require(vardpoor)
+require(ICC)
+require(ggplot2)
 
 
 # Reset ####
@@ -46,6 +48,7 @@ datSDDF[, .N, keyby = .(domain, stratify)]
 datSDDF[, .N, keyby = nchar(stratify)]
 
 m <- max(nchar(datSDDF$stratify))
+m
 
 
 # Create strata variable from domain and stratify
@@ -130,7 +133,7 @@ variables[, is.available := varname %in% names(dat2)]
 
 foo <- function(x) {
   if (x %in% names(dat2)) {
-    paste(sort(head(unique(dat2[[x]]))), collapse = ", ")
+    paste(sort(head(unique(dat2[[x]]), n = 10)), collapse = ", ")
   } else {
     NA_character_
   }
@@ -226,17 +229,62 @@ z_vars <- c(z_vars_binary, z_vars_other)
 tab_deff0 <- vardom(Y = y_vars, Z = z_vars,
                     H = "strata", PSU = "psu", w_final = "weight0",
                     period = "essround_cntry", fh_zero = TRUE,
-                    dataset = dat3)
+                    dataset = dat3, outp_lin = T)
 
 tab_deff1 <- vardom(Y = y_vars, Z = z_vars,
                     H = "strata", PSU = "psu", w_final = "weight1",
                     period = "essround_cntry", fh_zero = TRUE,
-                    dataset = dat3)
+                    dataset = dat3, outp_lin = T)
 
 tab_deff2 <- vardom(Y = y_vars, Z = z_vars,
                     H = "strata", PSU = "psu", w_final = "weight2",
                     period = "essround_cntry", fh_zero = TRUE,
-                    dataset = dat3)
+                    dataset = dat3, outp_lin = T)
+
+dat3[, .N, keyby = .(essround_cntry, strata, psu)]
+dat3[, .N, keyby = .(essround_cntry, psu)]
+dat3[, .N, keyby = .(psu)]
+
+# Linearized variables ####
+
+tab_deff0$lin_out
+
+# Test
+# names(tab_deff0$lin_out)
+#
+# dat3[, .N, keyby = cntry]
+#
+# ICCbare("psu", "y_vote", dat3[cntry == "AT"])
+#
+# tmpb <- dat3[, .N, keyby = .(essround_cntry, psu)][, .(b = mean(N)), keyby = essround_cntry]
+# tmp_ <- dat3[, .(ICC = ICCbare(factor(psu), y_vote)), keyby = essround_cntry]
+# tmp0 <- tab_deff0$lin_out[, .(ICC0 = ICCbare(factor(psu), y_vote)), keyby = essround_cntry]
+# tmp1 <- tab_deff1$lin_out[, .(ICC1 = ICCbare(factor(psu), y_vote)), keyby = essround_cntry]
+# tmp2 <- tab_deff2$lin_out[, .(ICC2 = ICCbare(factor(psu), y_vote)), keyby = essround_cntry]
+#
+# l <- mget(ls(pattern = "^tmp.$"))
+#
+# tmp <- Reduce(merge, l)
+# tmp
+
+# Average number of respondnets per PSU
+dat_b <- dat3[, .N, keyby = .(essround_cntry, psu)][, .(b = mean(N)),
+                                                    keyby = essround_cntry]
+dat_b
+
+ggplot(dat_b) + geom_col(aes(x = essround_cntry, y = b)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = .5))
+
+tab_deff0$lin_out
+
+lin_out <- melt(tab_deff0$lin_out, id.vars = c("id", "essround_cntry", "psu"))
+
+# Estimate ICC
+dat_ICC <- lin_out[, .(ICC = ICCbare(factor(psu), value)),
+                   keyby = .(essround_cntry, variable)]
+
+
+
 
 tab_deff <- rbindlist(list(tab_deff0$all_result,
                            tab_deff1$all_result,
@@ -247,8 +295,6 @@ tab_deff[, .N, keyby = .id]
 tab_deff[, weight := paste0("weight", .id - 1)]
 
 setorder(tab_deff, essround_cntry, weight)
-
-
 
 names(tab_deff)
 

@@ -6,7 +6,7 @@ options(stringsAsFactors = F)
 
 # Sys.getenv("R_ZIPCMD")
 # Sys.getenv("R_ZIPCMD", "zip")
-# Sys.setenv(R_ZIPCMD = "/usr/bin/zip")
+Sys.setenv(R_ZIPCMD = "/usr/bin/zip")
 
 # Packages
 require(data.table)
@@ -226,17 +226,17 @@ dat3[, .N, keyby = essround_cntry]
 y_vars <- c(y_vars_binary, y_vars_other)
 z_vars <- c(z_vars_binary, z_vars_other)
 
-tab_deff0 <- vardom(Y = y_vars, Z = z_vars,
+dat_deff0 <- vardom(Y = y_vars, Z = z_vars,
                     H = "strata", PSU = "psu", w_final = "weight0",
                     period = "essround_cntry", fh_zero = TRUE,
                     dataset = dat3, outp_lin = T)
 
-tab_deff1 <- vardom(Y = y_vars, Z = z_vars,
+dat_deff1 <- vardom(Y = y_vars, Z = z_vars,
                     H = "strata", PSU = "psu", w_final = "weight1",
                     period = "essround_cntry", fh_zero = TRUE,
                     dataset = dat3, outp_lin = T)
 
-tab_deff2 <- vardom(Y = y_vars, Z = z_vars,
+dat_deff2 <- vardom(Y = y_vars, Z = z_vars,
                     H = "strata", PSU = "psu", w_final = "weight2",
                     period = "essround_cntry", fh_zero = TRUE,
                     dataset = dat3, outp_lin = T)
@@ -247,10 +247,10 @@ dat3[, .N, keyby = .(psu)]
 
 # Linearized variables ####
 
-tab_deff0$lin_out
+dat_deff0$lin_out
 
 # Test
-# names(tab_deff0$lin_out)
+# names(dat_deff0$lin_out)
 #
 # dat3[, .N, keyby = cntry]
 #
@@ -258,9 +258,9 @@ tab_deff0$lin_out
 #
 # tmpb <- dat3[, .N, keyby = .(essround_cntry, psu)][, .(b = mean(N)), keyby = essround_cntry]
 # tmp_ <- dat3[, .(ICC = ICCbare(factor(psu), y_vote)), keyby = essround_cntry]
-# tmp0 <- tab_deff0$lin_out[, .(ICC0 = ICCbare(factor(psu), y_vote)), keyby = essround_cntry]
-# tmp1 <- tab_deff1$lin_out[, .(ICC1 = ICCbare(factor(psu), y_vote)), keyby = essround_cntry]
-# tmp2 <- tab_deff2$lin_out[, .(ICC2 = ICCbare(factor(psu), y_vote)), keyby = essround_cntry]
+# tmp0 <- dat_deff0$lin_out[, .(ICC0 = ICCbare(factor(psu), y_vote)), keyby = essround_cntry]
+# tmp1 <- dat_deff1$lin_out[, .(ICC1 = ICCbare(factor(psu), y_vote)), keyby = essround_cntry]
+# tmp2 <- dat_deff2$lin_out[, .(ICC2 = ICCbare(factor(psu), y_vote)), keyby = essround_cntry]
 #
 # l <- mget(ls(pattern = "^tmp.$"))
 #
@@ -275,26 +275,77 @@ dat_b
 ggplot(dat_b) + geom_col(aes(x = essround_cntry, y = b)) +
   theme(axis.text.x = element_text(angle = 90, vjust = .5))
 
-tab_deff0$lin_out
+dat_deff_p <- dat3[, .(deff_p = .N * sum(weight0 ^ 2) / sum(weight0) ^ 2),
+                   keyby = essround_cntry]
+dat_deff_p
 
-lin_out <- melt(tab_deff0$lin_out, id.vars = c("id", "essround_cntry", "psu"))
-
-# Estimate ICC
-dat_ICC <- lin_out[, .(ICC = ICCbare(factor(psu), value)),
-                   keyby = .(essround_cntry, variable)]
-
+ggplot(dat_deff_p) + geom_col(aes(x = essround_cntry, y = deff_p)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = .5))
 
 
 
-tab_deff <- rbindlist(list(tab_deff0$all_result,
-                           tab_deff1$all_result,
-                           tab_deff2$all_result), idcol = T)
+dat_deff0$lin_out
 
-tab_deff[, .N, keyby = .id]
+lin_out <- melt(dat_deff0$lin_out, id.vars = c("id", "essround_cntry", "psu"))
+lin_out[, psu := factor(psu)]
 
-tab_deff[, weight := paste0("weight", .id - 1)]
+# # Estimate ICC
+# dat_ICC <- lin_out[, .(ICC = ICCbare(psu, value)), keyby = .(essround_cntry, variable)]
+# save(dat_ICC, file = "data/dat_ICC.Rdata")
 
-setorder(tab_deff, essround_cntry, weight)
+load("data/dat_ICC.Rdata")
+
+dat_ICC <- merge(dat_ICC, dat_b, by = "essround_cntry", all.x = T)
+dat_ICC[b == 1, ICC := 0]
+
+dat_ICC <- merge(dat_ICC, dat_deff_p, by = "essround_cntry", all.x = T)
+
+dat_ICC[, deff_c := 1 + (b - 1) * ICC]
+
+dat_ICC[, deff := deff_p * deff_c]
+
+dat_ICC[, variable := sub("y_", "", variable)]
+
+
+tab_ICC <- dcast(dat_ICC, variable ~ essround_cntry, value.var = "ICC")
+tab_deff <- dcast(dat_ICC, variable ~ essround_cntry, value.var = "deff")
+
+
+# dat_deff <- rbindlist(list(dat_deff0$all_result,
+#                            dat_deff1$all_result,
+#                            dat_deff2$all_result), idcol = T)
+# dat_deff[, .N, keyby = .id]
+# dat_deff[, weight := paste0("weight", .id - 1)]
+# setorder(dat_deff, essround_cntry, weight)
+
+dat_deff_est <- dat_deff0$all_result
+setorder(dat_deff_est, essround_cntry, variable)
+
+dat_deff_est[, variable := gsub("^.*_", "", variable)]
+
+dat_deff_est[, .N]
+dat_ICC[, .N]
+
+dat_deff_est2 <- merge(dat_deff_est, dat_ICC,
+                       by = c("essround_cntry", "variable"))
+dat_deff_est2
+
+
+dat_deff_est2[, lapply(.SD, mean, na.rm = T), keyby = essround_cntry,
+              .SDcols = c("deff.x", "deff.y")]
+
+dat_deff_est2[!is.na(deff.x) & !is.na(deff.y)]
+
+pl_deff <- ggplot(dat_deff_est2[!is.na(deff.x) & !is.na(deff.y)]) +
+  geom_point(aes(deff.x, deff.y)) +
+  geom_abline(slope = 1, intercept = 0, colour = "red") +
+  facet_wrap(~ essround_cntry) +
+  ggtitle("ESS 7 Design Effect Estimates") +
+  xlab("Deff estimated from survey data") +
+  ylab("Deff estimated by ICC") +
+  theme_bw()
+ggsave("results/plot_deff.pdf", pl_deff, width = 16, height = 9)
+
 
 names(tab_deff)
 

@@ -4,8 +4,9 @@
 options(encoding = "UTF-8")
 options(stringsAsFactors = F)
 
-# Sys.getenv("R_ZIPCMD")
-# Sys.getenv("R_ZIPCMD", "zip")
+Sys.getenv("R_ZIPCMD")
+Sys.getenv("R_ZIPCMD", "zip")
+Sys.getenv("PATH")
 Sys.setenv(R_ZIPCMD = "/usr/bin/zip")
 
 # Packages
@@ -28,6 +29,9 @@ gc()
 load("data/dat.Rdata")
 load("data/datSDDF.Rdata")
 
+dat[, essround := factor(essround, 1:10, 1:10)]
+datSDDF[, essround := factor(essround, 1:10, 1:10)]
+
 
 # Sampling information ####
 
@@ -42,8 +46,8 @@ datSDDF[, .N, cntry][order(N)]
 str(datSDDF)
 
 datSDDF[, .N, keyby = domain]
-datSDDF[, .N, keyby = stratify]
-datSDDF[, .N, keyby = .(domain, stratify)]
+datSDDF[, .N, keyby = .(essround, cntry, stratify)]
+datSDDF[, .N, keyby = .(essround, cntry, stratify, domain)]
 
 datSDDF[, .N, keyby = nchar(stratify)]
 
@@ -54,27 +58,26 @@ m
 # Create strata variable from domain and stratify
 datSDDF[, strata := paste(domain, formatC(stratify, digits = m - 1, flag = 0),
                           sep = "_")]
-datSDDF[, .N, keyby = .(domain, stratify, strata)]
+datSDDF[, .N, keyby = .(essround, cntry, stratify, domain, strata)]
 
 
 tab_cntry <- datSDDF[, .(n_strat = sum(!duplicated(strata)),
                          n_psu = sum(!duplicated(psu)),
-                         n_resp = .N),
-                     keyby = .(essround, edition, cntry)]
+                         n_resp = .N), keyby = .(essround, cntry)]
 
 tab_strata <- datSDDF[, .(n_psu = sum(!duplicated(psu)),
                           n_resp = .N),
-                      keyby = .(essround, edition, cntry, strata)]
+                      keyby = .(essround, cntry, strata)]
 
 tab_psu <- datSDDF[, .(n_resp = .N),
-                   keyby = .(essround, edition, cntry, strata, psu)]
+                   keyby = .(essround, cntry, strata, psu)]
 
 tabl <- list(tab_cntry, tab_strata, tab_psu)
 names(tabl) <- c("cntry", "strata", "psu")
 
 write.xlsx(tabl, file = "results/SDDF-tables.xlsx",
            colWidths = "auto", firstRow = T,
-           headerStyle = createStyle(textDecoration = "bold",
+           headerStyle = createStyle(textDecoration = "italic",
                                      halign = "center"))
 
 
@@ -82,15 +85,14 @@ write.xlsx(tabl, file = "results/SDDF-tables.xlsx",
 
 intersect(names(dat), names(datSDDF))
 
-dat[, .N, keyby = .(name, essround, edition, proddate)]
-datSDDF[, .N, keyby = .(name, essround, edition, proddate)]
-
-vars <- c("name", "edition", "proddate")
-setnames(datSDDF, vars, paste0(vars, "SDDF"))
-
-intersect(names(dat), names(datSDDF))
-
 dat2 <- merge(dat, datSDDF, by = c("essround", "cntry", "idno"))
+
+nrow(dat)
+nrow(datSDDF)
+nrow(dat2) - nrow(datSDDF)
+
+rm(dat, datSDDF)
+gc()
 
 
 
@@ -101,17 +103,18 @@ dat2[, .(dweight, pspwght, pweight, prob)]
 # Design weights computed from sampling probabilities
 dat2[, dw := 1 / prob]
 
-tmp <- dat2[, .(cntry, dweight, pspwght, pweight, prob, dw)]
-tmp[, dweight2 := .N * dw / sum(dw), by = cntry]
+tmp <- dat2[, .(essround, cntry, dweight, pspwght, pweight, prob, dw)]
+tmp[, dweight2 := .N * dw / sum(dw), by = .(essround, cntry)]
 tmp[, all.equal(dweight, dweight2, check.attributes = F)]
 tmp[abs(dweight - dweight2) > .1][order(-abs(dweight - dweight2))]
-tmp[abs(dweight - dweight2) > .1, .N, keyby = cntry]
+tmp[abs(dweight - dweight2) > .1, .N, keyby = .(essround, cntry)]
 
 dat2[, weight0 := dw]
 dat2[, weight1 := dweight * pweight * 10e3]
 dat2[, weight2 := dweight * pspwght * pweight * 10e3]
 
-tab <- dat2[, lapply(.SD, sum), .SDcols = paste0("weight", 0:2), keyby = cntry]
+tab <- dat2[, lapply(.SD, sum), .SDcols = paste0("weight", 0:2),
+            keyby = .(essround, cntry)]
 
 tab[, paste0("p", 0:2) := lapply(.SD, function(x) round(x / weight2, 3)),
     .SDcols = paste0("weight", 0:2)]
@@ -146,18 +149,30 @@ variables[, values := foo(varname), by = varname]
 
 write.xlsx(variables, file = "results/variables.xlsx",
            colWidths = "auto", firstRow = T,
-           headerStyle = createStyle(textDecoration = "bold",
+           headerStyle = createStyle(textDecoration = "italic",
                                      halign = "center"))
+
 fwrite(variables, file = "tables/variables.csv", quote = T)
 
 
 variables[, .N, keyby = is.available]
 
-vars_binary <- variables[grepl("binary", file) & (is.available), varname]
-vars_other <- variables[!grepl("binary", file) & (is.available), varname]
+vars_binary <- variables[ grepl("binary", file) & (is.available), varname]
+vars_other  <- variables[!grepl("binary", file) & (is.available), varname]
 
+intersect(names(dat2), variables$varname)
 
-dat3 <- copy(dat2)
+head(names(dat2), 10)
+tail(names(dat2), 10)
+
+varnames.design <- c("essround", "cntry", "idno", "strata", "psu",
+                     "weight0", "weight1", "weight2")
+
+dat3 <- dat2[, c(varnames.design, intersect(names(dat2), variables$varname)),
+             with = F]
+
+rm(dat2)
+gc()
 
 y_vars_binary <- paste("y", vars_binary, sep = "_")
 z_vars_binary <- paste("z", vars_binary, sep = "_")
@@ -175,8 +190,12 @@ dat3[, c(y_vars_other) := lapply(.SD, function(x) ifelse(!is.na(x), x, 0)),
 dat3[, c(z_vars_other) := lapply(.SD, function(x) as.integer(!is.na(x))),
      .SDcols = vars_other]
 
-lapply(vars_binary, function(x) dat3[, .N, keyby = c(x, paste0("y_", x), paste0("z_", x))])
-lapply(vars_other, function(x) dat3[, .N, keyby = c(x, paste0("y_", x), paste0("z_", x))])
+# lapply(vars_binary, function(x) dat3[, .N, keyby = c(x, paste0("y_", x), paste0("z_", x))])
+# lapply(vars_other,  function(x) dat3[, .N, keyby = c(x, paste0("y_", x), paste0("z_", x))])
+
+dat3[order(-weight0), .(essround, cntry, weight0, weight1, weight2)][1:10]
+dat3[order(-weight1), .(essround, cntry, weight0, weight1, weight2)][1:10]
+dat3[order(-weight2), .(essround, cntry, weight0, weight1, weight2)][1:10]
 
 
 # # PPLTRST Most people can be trusted or you can't be too careful
@@ -210,15 +229,13 @@ lapply(vars_other, function(x) dat3[, .N, keyby = c(x, paste0("y_", x), paste0("
 #          ppltrst2 = sum(ppltrst_y * weight2) / sum(ppltrst_z * weight2)),
 #      keyby = .(essround, cntry)]
 
-dat3[, .N, keyby = strata]
+dat3[, .N, keyby = .(essround, cntry, strata)]
 
-tab <- dat3[, .(n = .N, pop0 = sum(weight0),
-                pop1 = sum(weight1), pop2 = sum(weight2)),
+tab <- dat3[, .(n = .N, pop = sum(weight0)),
             keyby = .(essround, cntry, strata, psu)]
-tab <- tab[, .(n = .N, pop0 = sum(pop0), pop1 = sum(pop1), pop2 = sum(pop2)),
-           keyby = .(essround, cntry, strata)]
+tab <- tab[, .(n = .N, pop = sum(pop)), keyby = .(essround, cntry, strata)]
 tab
-tab[n == 1 & pop0 > 1]
+tab[n == 1 & pop > 1]
 
 dat3[, essround_cntry := paste("ESS", essround, cntry, sep = "_")]
 dat3[, .N, keyby = essround_cntry]
@@ -227,17 +244,7 @@ y_vars <- c(y_vars_binary, y_vars_other)
 z_vars <- c(z_vars_binary, z_vars_other)
 
 dat_deff0 <- vardom(Y = y_vars, Z = z_vars,
-                    H = "strata", PSU = "psu", w_final = "weight0",
-                    period = "essround_cntry", fh_zero = TRUE,
-                    dataset = dat3, outp_lin = T)
-
-dat_deff1 <- vardom(Y = y_vars, Z = z_vars,
                     H = "strata", PSU = "psu", w_final = "weight1",
-                    period = "essround_cntry", fh_zero = TRUE,
-                    dataset = dat3, outp_lin = T)
-
-dat_deff2 <- vardom(Y = y_vars, Z = z_vars,
-                    H = "strata", PSU = "psu", w_final = "weight2",
                     period = "essround_cntry", fh_zero = TRUE,
                     dataset = dat3, outp_lin = T)
 
@@ -268,19 +275,28 @@ dat_deff0$lin_out
 # tmp
 
 # Average number of respondnets per PSU
-dat_b <- dat3[, .N, keyby = .(essround_cntry, psu)][, .(b = mean(N)),
-                                                    keyby = essround_cntry]
+dat_b <- dat3[, .N, keyby = .(essround, cntry, essround_cntry, psu)]
+dat_b <- dat_b[, .(b = mean(N)), keyby = .(essround, cntry, essround_cntry)]
 dat_b
 
-ggplot(dat_b) + geom_col(aes(x = essround_cntry, y = b)) +
-  theme(axis.text.x = element_text(angle = 90, vjust = .5))
+# ggplot(dat_b) + geom_col(aes(x = cntry, y = b)) +
+#   theme(axis.text.x = element_text(angle = 90, vjust = .5)) +
+#   facet_grid(essround ~ .)
 
-dat_deff_p <- dat3[, .(deff_p = .N * sum(weight0 ^ 2) / sum(weight0) ^ 2),
-                   keyby = essround_cntry]
+ggplot(dat_b) + geom_col(aes(x = essround, y = b, fill = essround)) +
+  facet_wrap(~ cntry)
+
+
+dat_deff_p <- dat3[, .(deff_p = .N * sum(weight1 ^ 2) / sum(weight1) ^ 2),
+                   keyby = .(essround, cntry, essround_cntry)]
 dat_deff_p
 
-ggplot(dat_deff_p) + geom_col(aes(x = essround_cntry, y = deff_p)) +
-  theme(axis.text.x = element_text(angle = 90, vjust = .5))
+# ggplot(dat_deff_p) + geom_col(aes(x = cntry, y = deff_p)) +
+#   theme(axis.text.x = element_text(angle = 90, vjust = .5)) +
+#   facet_grid(essround ~ .)
+
+ggplot(dat_deff_p) + geom_col(aes(x = essround, y = deff_p, fill = essround)) +
+  facet_wrap(~ cntry)
 
 
 
@@ -290,25 +306,28 @@ lin_out <- melt(dat_deff0$lin_out, id.vars = c("id", "essround_cntry", "psu"))
 lin_out[, psu := factor(psu)]
 
 # # Estimate ICC
-# dat_ICC <- lin_out[, .(ICC = ICCbare(psu, value)), keyby = .(essround_cntry, variable)]
+# dat_ICC <- lin_out[, .(ICC = ICCbare(psu, value)),
+#                    keyby = .(essround_cntry, variable)]
 # save(dat_ICC, file = "data/dat_ICC.Rdata")
 
 load("data/dat_ICC.Rdata")
 
-dat_ICC <- merge(dat_ICC, dat_b, by = "essround_cntry", all.x = T)
-dat_ICC[b == 1, ICC := 0]
+dat_deff_mod <- merge(dat_ICC, dat_b, by = "essround_cntry", all.x = T)
+dat_deff_mod[b == 1, ICC := 0]
 
-dat_ICC <- merge(dat_ICC, dat_deff_p, by = "essround_cntry", all.x = T)
+dat_deff_mod <- merge(dat_deff_mod, dat_deff_p,
+                      by = c("essround_cntry", "essround", "cntry"), all.x = T)
 
-dat_ICC[, deff_c := 1 + (b - 1) * ICC]
+dat_deff_mod[, deff_c := 1 + (b - 1) * ICC]
 
-dat_ICC[, deff := deff_p * deff_c]
+dat_deff_mod[, deff_mod := deff_p * deff_c]
 
-dat_ICC[, variable := sub("y_", "", variable)]
+dat_deff_mod[, variable := sub("y_", "", variable)]
+dat_deff_mod
 
 
-tab_ICC <- dcast(dat_ICC, variable ~ essround_cntry, value.var = "ICC")
-tab_deff <- dcast(dat_ICC, variable ~ essround_cntry, value.var = "deff")
+# tab_ICC <- dcast(dat_ICC, variable ~ essround_cntry, value.var = "ICC")
+# tab_deff <- dcast(dat_ICC, variable ~ essround_cntry, value.var = "deff")
 
 
 # dat_deff <- rbindlist(list(dat_deff0$all_result,
@@ -319,57 +338,100 @@ tab_deff <- dcast(dat_ICC, variable ~ essround_cntry, value.var = "deff")
 # setorder(dat_deff, essround_cntry, weight)
 
 dat_deff_est <- dat_deff0$all_result
-setorder(dat_deff_est, essround_cntry, variable)
+# setorder(dat_deff_est, essround_cntry, variable)
 
 dat_deff_est[, variable := gsub("^.*_", "", variable)]
 
 dat_deff_est[, .N]
-dat_ICC[, .N]
+dat_deff_mod[, .N]
 
-dat_deff_est2 <- merge(dat_deff_est, dat_ICC,
-                       by = c("essround_cntry", "variable"))
-dat_deff_est2
+intersect(names(dat_deff_est), names(dat_deff_mod))
+
+dat_deff <- merge(dat_deff_est, dat_deff_mod,
+                  by = c("essround_cntry", "variable"))
+dat_deff
 
 
-dat_deff_est2[, lapply(.SD, mean, na.rm = T), keyby = essround_cntry,
-              .SDcols = c("deff.x", "deff.y")]
+tab_deff <- dat_deff[, lapply(.SD, mean, na.rm = T),
+                     keyby = .(essround, cntry),
+                     .SDcols = c("deff_sam", "deff_mod",
+                                 "deff_p", "deff_c", "ICC", "b",
+                                 "n_eff", "pop_size")]
 
-dat_deff_est2[!is.na(deff.x) & !is.na(deff.y)]
+tab_deff <- merge(tab_deff, tab_cntry)
 
-pl_deff <- ggplot(dat_deff_est2[!is.na(deff.x) & !is.na(deff.y)]) +
-  geom_point(aes(deff.x, deff.y)) +
+tab_deff[, min_n_eff := ifelse(pop_size < 2e6, 800L, 1500L)]
+
+tab_deff[, assessment := n_eff > min_n_eff]
+
+tab_deff[, .N, keyby = .(essround, assessment)]
+
+
+dat_deff[is.na(deff_sam)]
+dat_deff[is.na(deff_mod)]
+
+
+pl_deff <- ggplot(dat_deff[!is.na(deff_sam) & !is.na(deff_mod)]) +
+  geom_point(aes(deff_sam, deff_mod, colour = essround)) +
   geom_abline(slope = 1, intercept = 0, colour = "red") +
-  facet_wrap(~ essround_cntry) +
-  ggtitle("ESS 7 Design Effect Estimates") +
+  geom_vline(xintercept = 1, colour = "red", linetype = "dotted") +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dotted") +
+  facet_wrap(~ cntry) +
+  ggtitle("ESS Design Effect Estimates") +
   xlab("Deff estimated from survey data") +
   ylab("Deff estimated by ICC") +
   theme_bw()
-ggsave("results/plot_deff.pdf", pl_deff, width = 16, height = 9)
+pl_deff
 
 
-names(tab_deff)
+pl_fun <- function(x) {
+  ggplot(dat_deff[!is.na(deff_sam) & !is.na(deff_mod) & cntry == x]) +
+    geom_point(aes(deff_sam, deff_mod, colour = essround)) +
+    geom_abline(slope = 1, intercept = 0, colour = "red") +
+    geom_vline(xintercept = 1, colour = "red", linetype = "dotted") +
+    geom_hline(yintercept = 1, colour = "red", linetype = "dotted") +
+    ggtitle(paste("ESS Design Effect Estimates for", x)) +
+    xlab("Deff estimated from survey data") +
+    ylab("Deff estimated by ICC") +
+    theme_bw()
+}
 
-tab_deff_subsel <- dcast(tab_deff, essround_cntry + variable ~ weight,
-                         value.var = c("estim", "se", "deff"))
-tab_deff_subsel
+list.cntry <- dat_deff[, unique(cntry)]
+
+pl_deff_cntry <- lapply(list.cntry, pl_fun)
+
+pl_deff_cntry[[1]]
 
 
-tab_deff_summary <- dcast(tab_deff, essround_cntry ~ weight,
-                          fun.aggregate = mean, na.rm = T,
-                          value.var = c("deff", "n_eff"))
-setorder(tab_deff_summary, deff_weight0)
-tab_deff_summary
+pdf("results/ESS_plot_deff.pdf", width = 16, height = 9)
+pl_deff
+dev.off()
+
+pdf("results/ESS_plot_deff_cntry.pdf", width = 16, height = 9)
+pl_deff_cntry
+dev.off()
 
 
+# Save ###
 
-tabl <- list(tab_deff, tab_deff_subsel, tab_deff_summary)
-names(tabl) <- c("all_estimates", "subselection", "summary")
+# For each parameter
 
-write.xlsx(tabl, file = "results/ESS-deff.xlsx",
+save(dat_deff, file = "results/ESS_dat_deff.Rdata")
+
+write.xlsx(dat_deff, file = "results/ESS_dat_deff.xlsx",
            colWidths = "auto", firstRow = T,
-           headerStyle = createStyle(textDecoration = "bold",
+           headerStyle = createStyle(textDecoration = "italic",
                                      halign = "center"))
 
-fwrite(tab_deff, file = "results/tab_deff.csv", quote = T)
-fwrite(tab_deff_subsel, file = "results/tab_deff_subsel.csv", quote = T)
-fwrite(tab_deff_summary, file = "results/tab_deff_summary.csv", quote = T)
+fwrite(dat_deff, file = "results/ESS_dat_deff.csv", quote = T)
+
+# Average
+
+save(tab_deff, file = "results/ESS_tab_deff.Rdata")
+
+write.xlsx(tab_deff, file = "results/ESS_tab_deff.xlsx",
+           colWidths = "auto", firstRow = T,
+           headerStyle = createStyle(textDecoration = "italic",
+                                     halign = "center"))
+
+fwrite(tab_deff, file = "results/ESS_tab_deff.csv", quote = T)

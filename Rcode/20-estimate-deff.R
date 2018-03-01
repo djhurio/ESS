@@ -351,12 +351,27 @@ dat_deff <- merge(dat_deff_est, dat_deff_mod,
                   by = c("essround_cntry", "variable"))
 dat_deff
 
+dat_deff[is.na(deff_sam), .N]
+dat_deff[is.na(deff_mod), .N]
 
-tab_deff <- dat_deff[, lapply(.SD, mean, na.rm = T),
+names(dat_deff)
+
+dat_deff[is.na(deff_sam), .(essround_cntry, variable, estim, Y_est, Z_est,
+                            deff_sam, deff_mod)][order(estim)]
+
+dat_deff[is.na(deff_sam) & !is.na(deff_mod), .(essround_cntry, variable, estim, Y_est, Z_est,
+                            deff_sam, deff_mod)][order(estim)]
+
+dat_deff[, .N] - dat_deff[Y_est > 0 & Y_est != Z_est, .N]
+
+tab_deff <- dat_deff[Y_est > 0 & Y_est != Z_est,
+                     c(.(n_variable = .N), lapply(.SD, mean)),
                      keyby = .(essround, cntry),
                      .SDcols = c("deff_sam", "deff_mod",
                                  "deff_p", "deff_c", "ICC", "b",
                                  "n_eff", "pop_size")]
+tab_deff
+tab_deff[, sum(n_variable)]
 
 tab_deff <- merge(tab_deff, tab_cntry)
 
@@ -367,11 +382,8 @@ tab_deff[, assessment := n_eff > min_n_eff]
 tab_deff[, .N, keyby = .(essround, assessment)]
 
 
-dat_deff[is.na(deff_sam)]
-dat_deff[is.na(deff_mod)]
 
-
-pl_deff <- ggplot(dat_deff[!is.na(deff_sam) & !is.na(deff_mod)]) +
+pl_deff <- ggplot(dat_deff[Y_est > 0 & Y_est != Z_est]) +
   geom_point(aes(deff_sam, deff_mod, colour = essround)) +
   geom_abline(slope = 1, intercept = 0, colour = "red") +
   geom_vline(xintercept = 1, colour = "red", linetype = "dotted") +
@@ -385,7 +397,7 @@ pl_deff
 
 
 pl_fun <- function(x) {
-  ggplot(dat_deff[!is.na(deff_sam) & !is.na(deff_mod) & cntry == x]) +
+  ggplot(dat_deff[Y_est > 0 & Y_est != Z_est & cntry == x]) +
     geom_point(aes(deff_sam, deff_mod, colour = essround)) +
     geom_abline(slope = 1, intercept = 0, colour = "red") +
     geom_vline(xintercept = 1, colour = "red", linetype = "dotted") +
@@ -403,12 +415,57 @@ pl_deff_cntry <- lapply(list.cntry, pl_fun)
 pl_deff_cntry[[1]]
 
 
+pl_summary_deff <- ggplot(tab_deff, aes(deff_sam, deff_mod, colour = essround)) +
+  geom_point() +
+  geom_text(aes(label = cntry), hjust = 0, vjust = 0, alpha = .5) +
+  geom_abline(slope = 1, intercept = 0, colour = "red") +
+  geom_vline(xintercept = 1, colour = "red", linetype = "dotted") +
+  geom_hline(yintercept = 1, colour = "red", linetype = "dotted") +
+  ggtitle("ESS Design Effect Estimates") +
+  xlab("Deff estimated from survey data") +
+  ylab("Deff estimated by ICC") +
+  theme_bw()
+pl_summary_deff
+
+names(tab_deff)
+
+pl_summary_effss_1500 <- ggplot(tab_deff[min_n_eff == 1500]) +
+  geom_col(aes(x = cntry, y = n_eff, fill = assessment)) +
+  facet_grid(essround ~ .) +
+  geom_hline(yintercept = 1500, colour = "red", linetype = "dotted") +
+  ggtitle("ESS Effective Sample Size",
+          "Population more than 2 million people aged 15 or over") +
+  xlab("Country") +
+  ylab("Effective Sample Size") +
+  theme_bw()
+pl_summary_effss_1500
+
+pl_summary_effss_800 <- ggplot(tab_deff[min_n_eff == 800]) +
+  geom_col(aes(x = cntry, y = n_eff, fill = assessment)) +
+  facet_grid(essround ~ .) +
+  geom_hline(yintercept = 800, colour = "red", linetype = "dotted") +
+  ggtitle("ESS Effective Sample Size",
+          "Population fewer than 2 million people aged 15 or over") +
+  xlab("Country") +
+  ylab("Effective Sample Size") +
+  theme_bw()
+pl_summary_effss_800
+
+tab_deff[cntry == "CY"]
+
+
 pdf("results/ESS_plot_deff.pdf", width = 16, height = 9)
 pl_deff
 dev.off()
 
 pdf("results/ESS_plot_deff_cntry.pdf", width = 16, height = 9)
 pl_deff_cntry
+dev.off()
+
+pdf("results/ESS_plot_summary.pdf", width = 16, height = 9)
+pl_summary_deff
+pl_summary_effss_1500
+pl_summary_effss_800
 dev.off()
 
 
@@ -427,11 +484,11 @@ fwrite(dat_deff, file = "results/ESS_dat_deff.csv", quote = T)
 
 # Average
 
-save(tab_deff, file = "results/ESS_tab_deff.Rdata")
+save(tab_deff, file = "results/ESS_tab_deff_v2.Rdata")
 
-write.xlsx(tab_deff, file = "results/ESS_tab_deff.xlsx",
+write.xlsx(tab_deff, file = "results/ESS_tab_deff_v2.xlsx",
            colWidths = "auto", firstRow = T,
            headerStyle = createStyle(textDecoration = "italic",
                                      halign = "center"))
 
-fwrite(tab_deff, file = "results/ESS_tab_deff.csv", quote = T)
+fwrite(tab_deff, file = "results/ESS_tab_deff_v2.csv", quote = T)

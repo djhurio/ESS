@@ -24,7 +24,6 @@ require(countrycode)
 require(rvest)
 require(stringr)
 require(openxlsx)
-
 # devtools::install_github("cimentadaj/ess")
 require(ess)
 

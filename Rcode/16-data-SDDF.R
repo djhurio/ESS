@@ -108,7 +108,6 @@ datSDDF <- rbindlist(datSDDF, fill = T, idcol = "name")
 class(datSDDF)
 
 datSDDF[, .N, keyby = cntry]
-datSDDF <- datSDDF[cntry != ""]
 
 datSDDF[, .N, keyby = str_extract(toupper(name), "ESS[1-9]")]
 

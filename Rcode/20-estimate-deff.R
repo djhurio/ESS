@@ -4,18 +4,14 @@
 options(encoding = "UTF-8")
 options(stringsAsFactors = F)
 
-Sys.getenv("R_ZIPCMD")
-Sys.getenv("R_ZIPCMD", "zip")
-Sys.getenv("PATH")
-Sys.setenv(R_ZIPCMD = "/usr/bin/zip")
 
 # Packages
 require(data.table)
-require(haven)
 require(openxlsx)
 require(vardpoor)
 require(ICC)
 require(ggplot2)
+require(essurvey)
 
 
 # Reset ####
@@ -26,153 +22,13 @@ gc()
 
 # Load data ####
 
-load("data/dat.Rdata")
-load("data/datSDDF.Rdata")
+load("data/dat2.Rdata")
+load("data/variables.Rdata")
 
-dat[, essround := factor(essround, 1:10, 1:10)]
-datSDDF[, essround := factor(essround, 1:10, 1:10)]
-
-
-# Sampling information ####
-
-datSDDF
-
-names(datSDDF)
-
-datSDDF[, lapply(.SD, class)]
-
-datSDDF[, .N, cntry][order(N)]
-
-str(datSDDF)
-
-datSDDF[, .N, keyby = domain]
-datSDDF[, .N, keyby = .(essround, cntry, stratify)]
-datSDDF[, .N, keyby = .(essround, cntry, stratify, domain)]
-
-datSDDF[, .N, keyby = nchar(stratify)]
-
-m <- max(nchar(datSDDF$stratify))
-m
-
-
-# Create strata variable from domain and stratify
-datSDDF[, strata := paste(domain, formatC(stratify, digits = m - 1, flag = 0),
-                          sep = "_")]
-datSDDF[, .N, keyby = .(essround, cntry, stratify, domain, strata)]
-
-
-tab_cntry <- datSDDF[, .(n_strat = sum(!duplicated(strata)),
-                         n_psu = sum(!duplicated(psu)),
-                         n_resp = .N), keyby = .(essround, cntry)]
-
-tab_strata <- datSDDF[, .(n_psu = sum(!duplicated(psu)),
-                          n_resp = .N),
-                      keyby = .(essround, cntry, strata)]
-
-tab_psu <- datSDDF[, .(n_resp = .N),
-                   keyby = .(essround, cntry, strata, psu)]
-
-tabl <- list(tab_cntry, tab_strata, tab_psu)
-names(tabl) <- c("cntry", "strata", "psu")
-
-write.xlsx(tabl, file = "results/SDDF-tables.xlsx",
-           colWidths = "auto", firstRow = T,
-           headerStyle = createStyle(textDecoration = "italic",
-                                     halign = "center"))
-
-
-# Merge ####
-
-intersect(names(dat), names(datSDDF))
-
-dat2 <- merge(dat, datSDDF, by = c("essround", "cntry", "idno"))
-
-nrow(dat)
-nrow(datSDDF)
-nrow(dat2) - nrow(datSDDF)
-
-rm(dat, datSDDF)
-gc()
-
-
-
-# Weights
-
-dat2[, .(dweight, pspwght, pweight, prob)]
-
-# Design weights computed from sampling probabilities
-dat2[, dw := 1 / prob]
-
-tmp <- dat2[, .(essround, cntry, dweight, pspwght, pweight, prob, dw)]
-tmp[, dweight2 := .N * dw / sum(dw), by = .(essround, cntry)]
-tmp[, all.equal(dweight, dweight2, check.attributes = F)]
-tmp[abs(dweight - dweight2) > .1][order(-abs(dweight - dweight2))]
-tmp[abs(dweight - dweight2) > .1, .N, keyby = .(essround, cntry)]
-
-dat2[, weight0 := dw]
-dat2[, weight1 := dweight * pweight * 10e3]
-dat2[, weight2 := dweight * pspwght * pweight * 10e3]
-
-tab <- dat2[, lapply(.SD, sum), .SDcols = paste0("weight", 0:2),
-            keyby = .(essround, cntry)]
-
-tab[, paste0("p", 0:2) := lapply(.SD, function(x) round(x / weight2, 3)),
-    .SDcols = paste0("weight", 0:2)]
-
-tab
-
-
-# Variables ####
-
-variables <- lapply(list.files("variables", full.names = T), read.table)
-names(variables) <- list.files("variables")
-
-variables <- rbindlist(variables, idcol = "file")
-setnames(variables, "V1", "varname")
-variables[, varname := tolower(varname)]
-variables
-
-variables[, is.available := varname %in% names(dat2)]
-
-foo <- function(x) {
-  if (x %in% names(dat2)) {
-    paste(sort(head(unique(dat2[[x]]), n = 10)), collapse = ", ")
-  } else {
-    NA_character_
-  }
-}
-
-foo("vote")
-foo("asd")
-
-variables[, values := foo(varname), by = varname]
-
-write.xlsx(variables, file = "results/variables.xlsx",
-           colWidths = "auto", firstRow = T,
-           headerStyle = createStyle(textDecoration = "italic",
-                                     halign = "center"))
-
-fwrite(variables, file = "tables/variables.csv", quote = T)
-
-
-variables[, .N, keyby = is.available]
+variables[varname == "ppltrst"]
 
 vars_binary <- variables[ grepl("binary", file) & (is.available), varname]
 vars_other  <- variables[!grepl("binary", file) & (is.available), varname]
-
-intersect(names(dat2), variables$varname)
-
-head(names(dat2), 10)
-tail(names(dat2), 10)
-
-varnames.design <- c("essround", "cntry", "idno", "strata", "psu",
-                     "weight0", "weight1", "weight2")
-
-dat3 <- dat2[, c(varnames.design, intersect(names(dat2), variables$varname)),
-             with = F]
-
-rm(dat2)
-gc()
 
 y_vars_binary <- paste("y", vars_binary, sep = "_")
 z_vars_binary <- paste("z", vars_binary, sep = "_")
@@ -180,77 +36,69 @@ z_vars_binary <- paste("z", vars_binary, sep = "_")
 y_vars_other <- paste("y", vars_other, sep = "_")
 z_vars_other <- paste("z", vars_other, sep = "_")
 
-dat3[, c(y_vars_binary) := lapply(.SD, function(x) as.integer(!is.na(x) & x == 1)),
+dat2[, c(y_vars_binary) := lapply(.SD, function(x) as.integer(!is.na(x) & x == 1)),
      .SDcols = vars_binary]
-dat3[, c(z_vars_binary) := lapply(.SD, function(x) as.integer(!is.na(x))),
+dat2[, c(z_vars_binary) := lapply(.SD, function(x) as.integer(!is.na(x))),
      .SDcols = vars_binary]
 
-dat3[, c(y_vars_other) := lapply(.SD, function(x) ifelse(!is.na(x), x, 0)),
+dat2[, c(y_vars_other) := lapply(.SD, function(x) ifelse(!is.na(x), x, 0)),
      .SDcols = vars_other]
-dat3[, c(z_vars_other) := lapply(.SD, function(x) as.integer(!is.na(x))),
+dat2[, c(z_vars_other) := lapply(.SD, function(x) as.integer(!is.na(x))),
      .SDcols = vars_other]
 
-# lapply(vars_binary, function(x) dat3[, .N, keyby = c(x, paste0("y_", x), paste0("z_", x))])
-# lapply(vars_other,  function(x) dat3[, .N, keyby = c(x, paste0("y_", x), paste0("z_", x))])
-
-dat3[order(-weight0), .(essround, cntry, weight0, weight1, weight2)][1:10]
-dat3[order(-weight1), .(essround, cntry, weight0, weight1, weight2)][1:10]
-dat3[order(-weight2), .(essround, cntry, weight0, weight1, weight2)][1:10]
+# lapply(vars_binary, function(x) dat2[, .N, keyby = c(x, paste0("y_", x), paste0("z_", x))])
+# lapply(vars_other,  function(x) dat2[, .N, keyby = c(x, paste0("y_", x), paste0("z_", x))])
 
 
-# # PPLTRST Most people can be trusted or you can't be too careful
-# # Valid values are from 0 to 10
-#
-# dat2[, .N, keyby = ppltrst]
-#
-# dcast(dat2, essround + cntry ~ ppltrst)
-#
-# dat2[!is.na(ppltrst), var(ppltrst), keyby = .(essround, cntry)]
-#
-# dat2[!is.na(ppltrst), .(ppltrst0 = weighted.mean(ppltrst, weight0),
-#                         ppltrst1 = weighted.mean(ppltrst, weight1),
-#                         ppltrst2 = weighted.mean(ppltrst, weight2))]
-#
-# # Compute Y and Z variables
-# dat2[, ppltrst_y := ifelse(is.na(ppltrst), 0L, ppltrst)]
-# dat2[, ppltrst_z := as.integer(!is.na(ppltrst))]
-#
-# dat2[, .(ppltrst0 = sum(ppltrst_y * weight0) / sum(ppltrst_z * weight0),
-#          ppltrst1 = sum(ppltrst_y * weight1) / sum(ppltrst_z * weight1),
-#          ppltrst2 = sum(ppltrst_y * weight2) / sum(ppltrst_z * weight2))]
-#
-# dat2[!is.na(ppltrst), .(ppltrst0 = weighted.mean(ppltrst, weight0),
-#                         ppltrst1 = weighted.mean(ppltrst, weight1),
-#                         ppltrst2 = weighted.mean(ppltrst, weight2)),
-#      keyby = .(essround, cntry)]
-#
-# dat2[, .(ppltrst0 = sum(ppltrst_y * weight0) / sum(ppltrst_z * weight0),
-#          ppltrst1 = sum(ppltrst_y * weight1) / sum(ppltrst_z * weight1),
-#          ppltrst2 = sum(ppltrst_y * weight2) / sum(ppltrst_z * weight2)),
-#      keyby = .(essround, cntry)]
 
-dat3[, .N, keyby = .(essround, cntry, strata)]
+# PPLTRST Most people can be trusted or you can't be too careful
+# Valid values are from 0 to 10
 
-tab <- dat3[, .(n = .N, pop = sum(weight0)),
-            keyby = .(essround, cntry, strata, psu)]
-tab <- tab[, .(n = .N, pop = sum(pop)), keyby = .(essround, cntry, strata)]
+dat2[, .N, keyby = ppltrst]
+
+dcast(dat2, essround + cntry ~ ppltrst)
+
+dat2[!is.na(ppltrst), var(ppltrst), keyby = .(essround, cntry)]
+
+dat2[!is.na(ppltrst), .(ppltrst1 = weighted.mean(ppltrst, weight1))]
+
+# Test run ####
+dat2[, .(ppltrst1 = sum(y_ppltrst * weight1) / sum(z_ppltrst * weight1))]
+
+dat2[!is.na(ppltrst), .(ppltrst1 = weighted.mean(ppltrst, weight1)),
+     keyby = .(essround, cntry)]
+
+dat2[, .(ppltrst1 = sum(y_ppltrst * weight1) / sum(z_ppltrst * weight1)),
+     keyby = .(essround, cntry)]
+
+
+# Live run ####
+
+dat2[, .N, keyby = .(essround, cntry, STR)]
+
+tab <- dat2[, .(n = .N, pop = sum(weight1)),
+            keyby = .(essround, cntry, STR, PSU)]
+tab <- tab[, .(n = .N, pop = sum(pop)), keyby = .(essround, cntry, STR)]
 tab
 tab[n == 1 & pop > 1]
 
-dat3[, essround_cntry := paste("ESS", essround, cntry, sep = "_")]
-dat3[, .N, keyby = essround_cntry]
+dat2[, essround_cntry := paste("ESS", essround, cntry, sep = "_")]
+dat2[, .N, keyby = essround_cntry]
+
+dat2[, essround_cntry_dom := paste("ESS", essround, cntry, domain, sep = "_")]
+dat2[, .N, keyby = essround_cntry_dom]
 
 y_vars <- c(y_vars_binary, y_vars_other)
 z_vars <- c(z_vars_binary, z_vars_other)
 
 dat_deff0 <- vardom(Y = y_vars, Z = z_vars,
-                    H = "strata", PSU = "psu", w_final = "weight1",
-                    period = "essround_cntry", fh_zero = TRUE,
-                    dataset = dat3, outp_lin = T)
+                    H = "STR", PSU = "PSU", w_final = "weight1",
+                    period = "essround_cntry_dom", fh_zero = TRUE,
+                    dataset = dat2, outp_lin = T)
 
-dat3[, .N, keyby = .(essround_cntry, strata, psu)]
-dat3[, .N, keyby = .(essround_cntry, psu)]
-dat3[, .N, keyby = .(psu)]
+dat2[, .N, keyby = .(essround_cntry, STR, PSU)]
+dat2[, .N, keyby = .(essround_cntry, PSU)]
+dat2[, .N, keyby = .(PSU)]
 
 # Linearized variables ####
 
@@ -259,15 +107,15 @@ dat_deff0$lin_out
 # Test
 # names(dat_deff0$lin_out)
 #
-# dat3[, .N, keyby = cntry]
+# dat2[, .N, keyby = cntry]
 #
-# ICCbare("psu", "y_vote", dat3[cntry == "AT"])
+# ICCbare("PSU", "y_vote", dat2[cntry == "AT"])
 #
-# tmpb <- dat3[, .N, keyby = .(essround_cntry, psu)][, .(b = mean(N)), keyby = essround_cntry]
-# tmp_ <- dat3[, .(ICC = ICCbare(factor(psu), y_vote)), keyby = essround_cntry]
-# tmp0 <- dat_deff0$lin_out[, .(ICC0 = ICCbare(factor(psu), y_vote)), keyby = essround_cntry]
-# tmp1 <- dat_deff1$lin_out[, .(ICC1 = ICCbare(factor(psu), y_vote)), keyby = essround_cntry]
-# tmp2 <- dat_deff2$lin_out[, .(ICC2 = ICCbare(factor(psu), y_vote)), keyby = essround_cntry]
+# tmpb <- dat2[, .N, keyby = .(essround_cntry, PSU)][, .(b = mean(N)), keyby = essround_cntry]
+# tmp_ <- dat2[, .(ICC = ICCbare(factor(PSU), y_vote)), keyby = essround_cntry]
+# tmp0 <- dat_deff0$lin_out[, .(ICC0 = ICCbare(factor(PSU), y_vote)), keyby = essround_cntry]
+# tmp1 <- dat_deff1$lin_out[, .(ICC1 = ICCbare(factor(PSU), y_vote)), keyby = essround_cntry]
+# tmp2 <- dat_deff2$lin_out[, .(ICC2 = ICCbare(factor(PSU), y_vote)), keyby = essround_cntry]
 #
 # l <- mget(ls(pattern = "^tmp.$"))
 #
@@ -275,48 +123,88 @@ dat_deff0$lin_out
 # tmp
 
 # Average number of respondnets per PSU
-dat_b <- dat3[, .N, keyby = .(essround, cntry, essround_cntry, psu)]
-dat_b <- dat_b[, .(b = mean(N)), keyby = .(essround, cntry, essround_cntry)]
+dat_b <- dat2[, .N, keyby = .(essround, cntry, domain,
+                              essround_cntry_dom, PSU)]
+dat_b <- dat_b[, .(b = mean(N)), keyby = .(essround, cntry, domain,
+                                           essround_cntry_dom)]
 dat_b
 
 # ggplot(dat_b) + geom_col(aes(x = cntry, y = b)) +
 #   theme(axis.text.x = element_text(angle = 90, vjust = .5)) +
 #   facet_grid(essround ~ .)
 
-ggplot(dat_b) + geom_col(aes(x = essround, y = b, fill = essround)) +
+pl_b <- ggplot(dat_b) +
+  geom_col(aes(x = essround, y = b,
+               fill = essround, linetype = domain),
+           colour = "black", position = "dodge") +
+  ggtitle("ESS avearge cluster size (b)") +
   facet_wrap(~ cntry)
 
 
-dat_deff_p <- dat3[, .(deff_p = .N * sum(weight1 ^ 2) / sum(weight1) ^ 2),
-                   keyby = .(essround, cntry, essround_cntry)]
+dat_deff_p <- dat2[, .(deff_p = .N * sum(weight1 ^ 2) / sum(weight1) ^ 2),
+                   keyby = .(essround, cntry, domain, essround_cntry_dom)]
 dat_deff_p
 
 # ggplot(dat_deff_p) + geom_col(aes(x = cntry, y = deff_p)) +
 #   theme(axis.text.x = element_text(angle = 90, vjust = .5)) +
 #   facet_grid(essround ~ .)
 
-ggplot(dat_deff_p) + geom_col(aes(x = essround, y = deff_p, fill = essround)) +
+pl_deff_p <- ggplot(dat_deff_p) +
+  geom_col(aes(x = essround, y = deff_p,
+               fill = essround, linetype = domain),
+           colour = "black", position = "dodge") +
+  ggtitle("ESS deff_p") +
   facet_wrap(~ cntry)
 
 
 
 dat_deff0$lin_out
 
-lin_out <- melt(dat_deff0$lin_out, id.vars = c("id", "essround_cntry", "psu"))
-lin_out[, psu := factor(psu)]
+lin_out <- melt(dat_deff0$lin_out,
+                id.vars = c("id", "essround_cntry_dom", "PSU"))
+# lin_out[, PSU := factor(PSU)]
+setkey(lin_out, essround_cntry_dom, variable, PSU, id)
 
-# # Estimate ICC
-# dat_ICC <- lin_out[, .(ICC = ICCbare(psu, value)),
-#                    keyby = .(essround_cntry, variable)]
+
+# Estimate ICC
+
+lin_out[!is.na(value)]
+
+lin_out[!is.na(value), sd := sd(value),
+        by = .(essround_cntry_dom, variable)]
+
+lin_out[sd == 0]
+
+# vlist <- sort(unique(lin_out$essround_cntry_dom))
+dat_b[, summary(b)]
+vlist <- dat_b[, essround_cntry_dom]
+
+estimICC <- function(x) {
+  cat(x, "\n\n")
+  dat <- lin_out[essround_cntry_dom == x & !is.na(value) & sd > 0]
+  dat[, psu := factor(PSU)]
+  dat[, .(ICC = ICCbare(psu, value)),
+      keyby = .(essround_cntry_dom, variable)]
+}
+
+# estimICC(vlist[3])
+# lin_out[essround_cntry_dom == vlist[1] & variable == "y_dscretn"][order(value)]
+# dat2[essround_cntry_dom == vlist[1],
+#      .(dscretn, y_dscretn, z_dscretn)][order(dscretn)]
+
+# dat_ICC <- lapply(vlist, estimICC)
+# dat_ICC <- rbindlist(dat_ICC, use.names = T)
 # save(dat_ICC, file = "data/dat_ICC.Rdata")
 
 load("data/dat_ICC.Rdata")
 
-dat_deff_mod <- merge(dat_ICC, dat_b, by = "essround_cntry", all.x = T)
+dat_deff_mod <- merge(dat_ICC, dat_b,
+                      by = "essround_cntry_dom", all.x = T)
 dat_deff_mod[b == 1, ICC := 0]
 
 dat_deff_mod <- merge(dat_deff_mod, dat_deff_p,
-                      by = c("essround_cntry", "essround", "cntry"), all.x = T)
+                      by = c("essround_cntry_dom",
+                             "essround", "cntry", "domain"), all.x = T)
 
 dat_deff_mod[, deff_c := 1 + (b - 1) * ICC]
 
@@ -342,13 +230,18 @@ dat_deff_est <- dat_deff0$all_result
 
 dat_deff_est[, variable := gsub("^.*_", "", variable)]
 
+dat_deff_est[n_nonzero > 0 & var > 0]
+
 dat_deff_est[, .N]
+dat_deff_est[n_nonzero > 0, .N]
+dat_deff_est[var > 0, .N]
+
 dat_deff_mod[, .N]
 
 intersect(names(dat_deff_est), names(dat_deff_mod))
 
 dat_deff <- merge(dat_deff_est, dat_deff_mod,
-                  by = c("essround_cntry", "variable"))
+                  by = c("essround_cntry_dom", "variable"), all = T)
 dat_deff
 
 dat_deff[is.na(deff_sam), .N]
@@ -356,34 +249,64 @@ dat_deff[is.na(deff_mod), .N]
 
 names(dat_deff)
 
-dat_deff[is.na(deff_sam), .(essround_cntry, variable, estim, Y_est, Z_est,
+dat_deff[is.na(deff_sam), .(essround_cntry_dom, variable,
+                            estim, Y_est, Z_est,
                             deff_sam, deff_mod)][order(estim)]
 
-dat_deff[is.na(deff_sam) & !is.na(deff_mod), .(essround_cntry, variable, estim, Y_est, Z_est,
-                            deff_sam, deff_mod)][order(estim)]
+dat_deff[is.na(deff_sam) & !is.na(deff_mod),
+         .(essround_cntry_dom, variable, estim, Y_est, Z_est,
+           deff_sam, deff_mod)][order(estim)]
+
+dat_deff[is.na(deff_sam) & !is.na(deff_mod),
+         .(essround_cntry_dom, variable, estim, Y_est, Z_est,
+           deff_sam, deff_mod)][order(estim)]
 
 dat_deff[, .N] - dat_deff[Y_est > 0 & Y_est != Z_est, .N]
 
-tab_deff <- dat_deff[Y_est > 0 & Y_est != Z_est,
+dat_deff[Y_est > 0 & Y_est != Z_est, .N]
+dat_deff[!is.na(deff_sam), .N]
+dat_deff[Y_est > 0 & Y_est != Z_est & is.na(deff_sam), .N]
+dat_deff[Y_est > 0 & Y_est != Z_est & is.na(deff_sam)]
+
+dat_deff[, .N, keyby = .(n_nonzero)]
+
+dat_deff[!is.na(deff_mod), .N]
+dat_deff[!is.na(deff_sam), .N]
+dat_deff[var > 0, .N]
+dat_deff[!is.na(deff_sam) & var == 0, .N]
+
+tab_deff <- dat_deff[!is.na(deff_mod) & !is.na(deff_sam),
                      c(.(n_variable = .N), lapply(.SD, mean)),
-                     keyby = .(essround, cntry),
+                     keyby = .(essround, cntry, domain),
                      .SDcols = c("deff_sam", "deff_mod",
                                  "deff_p", "deff_c", "ICC", "b",
-                                 "n_eff", "pop_size")]
+                                 "pop_size", "respondent_count")]
 tab_deff
 tab_deff[, sum(n_variable)]
 
-tab_deff <- merge(tab_deff, tab_cntry)
+tab_cntry <- dat2[, .(n_strat = sum(!duplicated(STR)),
+                      n_psu = sum(!duplicated(PSU)),
+                      n_resp = .N), keyby = .(essround, cntry, domain)]
 
-tab_deff[, min_n_eff := ifelse(pop_size < 2e6, 800L, 1500L)]
+tab_deff <- merge(tab_deff, tab_cntry,
+                  by = c("essround", "cntry", "domain"))
 
-tab_deff[, assessment := n_eff > min_n_eff]
+tab_deff[, all.equal(n_resp, respondent_count)]
 
-tab_deff[, .N, keyby = .(essround, assessment)]
+tab_deff[, n_eff_sam := n_resp / deff_sam]
+tab_deff[, n_eff_mod := n_resp / deff_mod]
 
 
 
-pl_deff <- ggplot(dat_deff[Y_est > 0 & Y_est != Z_est]) +
+# tab_deff[, min_n_eff := ifelse(pop_size < 2e6, 800L, 1500L)]
+#
+# tab_deff[, assessment := n_eff > min_n_eff]
+#
+# tab_deff[, .N, keyby = .(essround, assessment)]
+
+
+
+pl_deff <- ggplot(dat_deff[!is.na(deff_sam) & !is.na(deff_mod)]) +
   geom_point(aes(deff_sam, deff_mod, colour = essround)) +
   geom_abline(slope = 1, intercept = 0, colour = "red") +
   geom_vline(xintercept = 1, colour = "red", linetype = "dotted") +
@@ -397,7 +320,7 @@ pl_deff
 
 
 pl_fun <- function(x) {
-  ggplot(dat_deff[Y_est > 0 & Y_est != Z_est & cntry == x]) +
+  ggplot(dat_deff[!is.na(deff_sam) & !is.na(deff_mod) & cntry == x]) +
     geom_point(aes(deff_sam, deff_mod, colour = essround)) +
     geom_abline(slope = 1, intercept = 0, colour = "red") +
     geom_vline(xintercept = 1, colour = "red", linetype = "dotted") +
@@ -408,7 +331,7 @@ pl_fun <- function(x) {
     theme_bw()
 }
 
-list.cntry <- dat_deff[, unique(cntry)]
+list.cntry <- dat2[, sort(unique(cntry))]
 
 pl_deff_cntry <- lapply(list.cntry, pl_fun)
 
@@ -429,43 +352,39 @@ pl_summary_deff
 
 names(tab_deff)
 
-pl_summary_effss_1500 <- ggplot(tab_deff[min_n_eff == 1500]) +
-  geom_col(aes(x = cntry, y = n_eff, fill = assessment)) +
-  facet_grid(essround ~ .) +
-  geom_hline(yintercept = 1500, colour = "red", linetype = "dotted") +
-  ggtitle("ESS Effective Sample Size",
-          "Population more than 2 million people aged 15 or over") +
-  xlab("Country") +
-  ylab("Effective Sample Size") +
-  theme_bw()
-pl_summary_effss_1500
-
-pl_summary_effss_800 <- ggplot(tab_deff[min_n_eff == 800]) +
-  geom_col(aes(x = cntry, y = n_eff, fill = assessment)) +
-  facet_grid(essround ~ .) +
-  geom_hline(yintercept = 800, colour = "red", linetype = "dotted") +
-  ggtitle("ESS Effective Sample Size",
-          "Population fewer than 2 million people aged 15 or over") +
-  xlab("Country") +
-  ylab("Effective Sample Size") +
-  theme_bw()
-pl_summary_effss_800
+# pl_summary_effss_1500 <- ggplot(tab_deff[min_n_eff == 1500]) +
+#   geom_col(aes(x = cntry, y = n_eff, fill = assessment)) +
+#   facet_grid(essround ~ .) +
+#   geom_hline(yintercept = 1500, colour = "red", linetype = "dotted") +
+#   ggtitle("ESS Effective Sample Size",
+#           "Population more than 2 million people aged 15 or over") +
+#   xlab("Country") +
+#   ylab("Effective Sample Size") +
+#   theme_bw()
+# pl_summary_effss_1500
+#
+# pl_summary_effss_800 <- ggplot(tab_deff[min_n_eff == 800]) +
+#   geom_col(aes(x = cntry, y = n_eff, fill = assessment)) +
+#   facet_grid(essround ~ .) +
+#   geom_hline(yintercept = 800, colour = "red", linetype = "dotted") +
+#   ggtitle("ESS Effective Sample Size",
+#           "Population fewer than 2 million people aged 15 or over") +
+#   xlab("Country") +
+#   ylab("Effective Sample Size") +
+#   theme_bw()
+# pl_summary_effss_800
 
 tab_deff[cntry == "CY"]
 
 
 pdf("results/ESS_plot_deff.pdf", width = 16, height = 9)
+pl_b
+pl_deff_p
 pl_deff
-dev.off()
-
-pdf("results/ESS_plot_deff_cntry.pdf", width = 16, height = 9)
 pl_deff_cntry
-dev.off()
-
-pdf("results/ESS_plot_summary.pdf", width = 16, height = 9)
 pl_summary_deff
-pl_summary_effss_1500
-pl_summary_effss_800
+# pl_summary_effss_1500
+# pl_summary_effss_800
 dev.off()
 
 
@@ -484,11 +403,11 @@ fwrite(dat_deff, file = "results/ESS_dat_deff.csv", quote = T)
 
 # Average
 
-save(tab_deff, file = "results/ESS_tab_deff_v2.Rdata")
+save(tab_deff, file = "results/ESS_tab_deff.Rdata")
 
-write.xlsx(tab_deff, file = "results/ESS_tab_deff_v2.xlsx",
+write.xlsx(tab_deff, file = "results/ESS_tab_deff.xlsx",
            colWidths = "auto", firstRow = T,
            headerStyle = createStyle(textDecoration = "italic",
                                      halign = "center"))
 
-fwrite(tab_deff, file = "results/ESS_tab_deff_v2.csv", quote = T)
+fwrite(tab_deff, file = "results/ESS_tab_deff.csv", quote = T)

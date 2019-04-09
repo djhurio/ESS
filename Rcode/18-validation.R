@@ -34,20 +34,18 @@ dcast(datSDDF, cntry ~ essround)
 
 datSDDF[cntry == ""]
 datSDDF[cntry == "NA"]
-datSDDF <- datSDDF[cntry != "" & cntry != "NA"]
-
-
-anyDuplicated(datSDDF, by = c("essround", "cntry", "domain", "idno"))
-
-datSDDF[, n := .N, by = .(essround, cntry, idno)]
-datSDDF[n > 1]
-
 datSDDF[is.na(idno)]
-datSDDF <- datSDDF[!is.na(idno)]
+
+datSDDF <- datSDDF[cntry != "" & cntry != "NA" & !is.na(idno)]
 
 anyDuplicated(datSDDF, by = c("essround", "cntry", "domain", "idno"))
 
-str(datSDDF)
+# datSDDF[, n := .N, by = .(essround, cntry, idno)]
+# datSDDF[n > 1]
+
+anyDuplicated(datSDDF, by = c("essround", "cntry", "domain", "idno"))
+
+# str(datSDDF)
 
 datSDDF[, .N, keyby = domain]
 datSDDF[, .N, keyby = .(essround, cntry, domain)]
@@ -59,7 +57,7 @@ datSDDF[, .N, keyby = .(essround, cntry, stratum, domain)]
 datSDDF[is.na(stratum), .N, keyby = .(essround, cntry, stratum)]
 datSDDF[grep("NA", stratum), .N, keyby = .(essround, cntry, stratum)]
 
-datSDDF[, .N, keyby = nchar(stratum)]
+# datSDDF[, .N, keyby = nchar(stratum)]
 
 
 # Create strata variable from country, domain and stratum

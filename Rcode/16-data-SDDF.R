@@ -103,7 +103,7 @@ lapply(datSDDF, function(x) if ("stratify" %in% names(x)) setnames(x, "stratify"
 
 lapply(datSDDF, `[`, j = .N, keyby = cntry)
 
-datSDDF <- rbindlist(datSDDF, fill = T, idcol = "name")
+datSDDF <- rbindlist(datSDDF, use.names = T, fill = T, idcol = "name")
 
 class(datSDDF)
 
@@ -125,7 +125,8 @@ datSDDF[, .N, keyby = .(round(domain))]
 
 
 
-datSDDF <- datSDDF[, .(essround, cntry, idno, domain, stratum, psu, prob)]
+datSDDF <- datSDDF[, .(essround, cntry, idno, domain,
+                       stratum, psu, prob, name)]
 
 datSDDF[, lapply(.SD, class)]
 

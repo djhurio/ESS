@@ -32,16 +32,24 @@ datSDDF[, lapply(.SD, class)]
 datSDDF[, .N, cntry][order(N)]
 dcast(datSDDF, cntry ~ essround)
 
-datSDDF[cntry == ""]
-datSDDF[cntry == "NA"]
-datSDDF[is.na(idno)]
+datSDDF[!grepl("[A-Z]{2}", cntry) | cntry == "NA", .N]
+datSDDF[!grepl("[A-Z]{2}", cntry) | cntry == "NA", .N,
+        keyby = .(essround, cntry, name)]
+
+datSDDF[cntry != "" & cntry != "NA" & is.na(idno), .N]
+datSDDF[cntry != "" & cntry != "NA" & is.na(idno), .N,
+        keyby = .(essround, cntry)]
+
+datSDDF[cntry == "" | cntry == "NA" | is.na(idno), .N]
+datSDDF[cntry == "" | cntry == "NA" | is.na(idno), .N,
+        keyby = .(essround, cntry)]
 
 datSDDF <- datSDDF[cntry != "" & cntry != "NA" & !is.na(idno)]
 
 anyDuplicated(datSDDF, by = c("essround", "cntry", "domain", "idno"))
 
-# datSDDF[, n := .N, by = .(essround, cntry, idno)]
-# datSDDF[n > 1]
+datSDDF[, n := .N, by = .(essround, cntry, domain, idno)]
+datSDDF[n > 1][order(essround, cntry, domain, idno)]
 
 anyDuplicated(datSDDF, by = c("essround", "cntry", "domain", "idno"))
 

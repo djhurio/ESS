@@ -38,6 +38,18 @@ datSDDF[, essround := factor(essround, show_rounds(), show_rounds())]
 dcast(dat, cntry ~ essround)
 
 
+
+# deff_p
+
+dat[, weight1 := dweight * pweight * 10e3]
+
+deff_p_0 <- dat[, .(deff_p = .N * sum(weight1 ^ 2) / sum(weight1) ^ 2,
+                    n = .N), keyby = .(essround, cntry)]
+deff_p_0[cntry == "RO"]
+
+
+
+
 # Sampling information ####
 datSDDF
 
@@ -55,40 +67,40 @@ datSDDF[, .N, keyby = domain]
 datSDDF[, .N, keyby = .(essround, cntry, domain)]
 
 datSDDF[, .N, keyby = .(essround, cntry)]
-datSDDF[, .N, keyby = .(essround, cntry, stratify)]
-datSDDF[, .N, keyby = .(essround, cntry, stratify, domain)]
+datSDDF[, .N, keyby = .(essround, cntry, stratum)]
+datSDDF[, .N, keyby = .(essround, cntry, stratum, domain)]
 
-datSDDF[, .N, keyby = nchar(stratify)]
+datSDDF[, .N, keyby = nchar(stratum)]
 
 
 
 # Create one stratum for FI
-datSDDF[cntry == "FI", .N, keyby = .(essround, cntry, stratify)][, .N, keyby = .(essround, cntry)]
-datSDDF[cntry == "FI", stratify := "0"]
-datSDDF[cntry == "FI", .N, keyby = .(essround, cntry, stratify)]
+datSDDF[cntry == "FI", .N, keyby = .(essround, cntry, stratum)][, .N, keyby = .(essround, cntry)]
+datSDDF[cntry == "FI", stratum := "0"]
+datSDDF[cntry == "FI", .N, keyby = .(essround, cntry, stratum)]
 
 # # Create one stratum for LT R5
-# datSDDF[cntry == "LT" & essround == 5, .N, keyby = .(essround, cntry, stratify)]
-# datSDDF[cntry == "LT" & essround == 5, stratify := "0"]
-# datSDDF[cntry == "LT", .N, keyby = .(essround, cntry, stratify)]
+# datSDDF[cntry == "LT" & essround == 5, .N, keyby = .(essround, cntry, stratum)]
+# datSDDF[cntry == "LT" & essround == 5, stratum := "0"]
+# datSDDF[cntry == "LT", .N, keyby = .(essround, cntry, stratum)]
 
 # Create one stratum for BG
-datSDDF[cntry == "BG", .N, keyby = .(essround, cntry, stratify)][, .N, keyby = .(essround, cntry)]
+datSDDF[cntry == "BG", .N, keyby = .(essround, cntry, stratum)][, .N, keyby = .(essround, cntry)]
 datSDDF[cntry == "BG" & essround == 5]
-datSDDF[cntry == "BG" & essround == 5, stratify := "0"]
-datSDDF[cntry == "BG", .N, keyby = .(essround, cntry, stratify)]
+datSDDF[cntry == "BG" & essround == 5, stratum := "0"]
+datSDDF[cntry == "BG", .N, keyby = .(essround, cntry, stratum)]
 datSDDF[cntry == "BG" & essround == 5]
 
 # Albania
-datSDDF[cntry == "AL", .N, keyby = .(essround, cntry, stratify)][, .N, keyby = .(essround, cntry)]
+datSDDF[cntry == "AL", .N, keyby = .(essround, cntry, stratum)][, .N, keyby = .(essround, cntry)]
 
 
-# Create strata variable from country, domain and stratify
-# m <- max(nchar(datSDDF$stratify))
+# Create strata variable from country, domain and stratum
+# m <- max(nchar(datSDDF$stratum))
 # m
 
-datSDDF[, STR := paste(essround, cntry, domain, stratify, sep = "_")]
-datSDDF[, .N, keyby = .(essround, cntry, domain, stratify)]
+datSDDF[, STR := paste(essround, cntry, domain, stratum, sep = "_")]
+datSDDF[, .N, keyby = .(essround, cntry, domain, stratum)]
 datSDDF[, .N, keyby = .(STR)]
 
 # Create PSU variable from STR and psu
@@ -105,7 +117,7 @@ dcast(datSDDF, essround + cntry ~ is.na(psu))
 datSDDF[essround == 1 & cntry == "ES", .N,
         keyby = .(essround, cntry, is.na(psu))]
 datSDDF[essround == 1 & cntry == "ES", .N,
-        keyby = .(essround, cntry, stratify, is.na(psu))]
+        keyby = .(essround, cntry, stratum, is.na(psu))]
 datSDDF[essround == 1 & cntry == "ES"]
 
 
@@ -118,7 +130,7 @@ m
 datSDDF[, PSU := paste(STR, formatC(psu, digits = m - 1, flag = 0),
                        sep = "_")]
 
-datSDDF[, .N, keyby = .(essround, cntry, domain, stratify, psu)]
+datSDDF[, .N, keyby = .(essround, cntry, domain, stratum, psu)]
 datSDDF[, .N, keyby = .(PSU)]
 datSDDF[, .N, keyby = .(STR, PSU)]
 
@@ -178,19 +190,19 @@ dat2[cntry == "CY" & essround == 5, .N,
 
 dat2[cntry == "CY" & essround == 5 & is.na(dat_sddf),
      .(essround, cntry, idno, dat_surv, dat_sddf,
-       stratify, psu, prob, weight)]
+       stratum, psu, prob, weight)]
 
 dat2[is.na(dat_surv) & !is.na(dat_sddf),
      .(essround, cntry, idno, dat_surv, dat_sddf,
-       stratify, psu, prob)]
+       stratum, psu, prob)]
 
 dat2[is.na(dat_surv) & !is.na(dat_sddf),
      .(essround, cntry, idno, dat_surv, dat_sddf,
-       stratify, psu, prob, dweight)]
+       stratum, psu, prob, dweight)]
 
 dat2[cntry == "LT" & essround == 5 & (dat_surv),
      .(essround, cntry, idno, dat_surv, dat_sddf,
-       stratify, psu, prob, dweight)]
+       stratum, psu, prob, dweight)]
 
 dat2[cntry == "LT" & essround == 5 & (dat_surv), .(.N, sum(dweight))]
 

@@ -32,26 +32,28 @@ datSDDF[, lapply(.SD, class)]
 datSDDF[, .N, cntry][order(N)]
 dcast(datSDDF, cntry ~ essround)
 
-datSDDF[!grepl("[A-Z]{2}", cntry) | cntry == "NA", .N]
-datSDDF[!grepl("[A-Z]{2}", cntry) | cntry == "NA", .N,
-        keyby = .(essround, cntry, name)]
+datSDDF[cntry == "NA"]
+datSDDF[cntry == "NA", .N]
+datSDDF[cntry == "NA", .N,
+        keyby = .(essround, cntry, idno, file.name)]
 
-datSDDF[cntry != "" & cntry != "NA" & is.na(idno), .N]
-datSDDF[cntry != "" & cntry != "NA" & is.na(idno), .N,
-        keyby = .(essround, cntry)]
+datSDDF[cntry != "NA" & is.na(idno)]
+datSDDF[cntry != "NA" & is.na(idno), .N]
+datSDDF[cntry != "NA" & is.na(idno), .N,
+        keyby = .(essround, cntry, idno, file.name)]
 
-datSDDF[cntry == "" | cntry == "NA" | is.na(idno), .N]
-datSDDF[cntry == "" | cntry == "NA" | is.na(idno), .N,
-        keyby = .(essround, cntry)]
+datSDDF[cntry == "NA" | is.na(idno), .N]
+datSDDF[cntry == "NA" | is.na(idno), .N,
+        keyby = .(essround, cntry, idno, file.name)]
 
-datSDDF <- datSDDF[cntry != "" & cntry != "NA" & !is.na(idno)]
+# Delete empty records
+datSDDF <- datSDDF[!is.na(idno)]
 
 anyDuplicated(datSDDF, by = c("essround", "cntry", "domain", "idno"))
 
 datSDDF[, n := .N, by = .(essround, cntry, domain, idno)]
 datSDDF[n > 1][order(essround, cntry, domain, idno)]
-
-anyDuplicated(datSDDF, by = c("essround", "cntry", "domain", "idno"))
+datSDDF[, n := NULL]
 
 # str(datSDDF)
 
@@ -63,13 +65,14 @@ datSDDF[, .N, keyby = .(essround, cntry, stratum)]
 datSDDF[, .N, keyby = .(essround, cntry, stratum, domain)]
 
 datSDDF[is.na(stratum), .N, keyby = .(essround, cntry, stratum)]
-datSDDF[grep("NA", stratum), .N, keyby = .(essround, cntry, stratum)]
+datSDDF[grep("NA", stratum), .N,
+        keyby = .(essround, cntry, stratum = trimws(stratum))]
 
 # datSDDF[, .N, keyby = nchar(stratum)]
 
 
 # Create strata variable from country, domain and stratum
-datSDDF[, STR := paste(essround, cntry, domain, stratum, sep = "_")]
+datSDDF[, STR := paste(essround, cntry, domain, trimws(stratum), sep = "_")]
 datSDDF[, .N, keyby = .(essround, cntry, domain, stratum)]
 datSDDF[, .N, keyby = .(STR)]
 
@@ -143,76 +146,25 @@ dat[, essround := factor(essround, show_rounds(), show_rounds())]
 dcast(dat, cntry ~ essround)
 
 
-# Variables ####
-
-variables <- lapply(list.files("variables", full.names = T), read.table)
-names(variables) <- list.files("variables")
-
-variables <- rbindlist(variables, idcol = "file")
-setnames(variables, "V1", "varname")
-variables[, varname := tolower(varname)]
-variables
-
-variables[, is.available := varname %in% names(dat)]
-variables[, .N, keyby = .(is.available)]
-
-foo <- function(x) {
-  if (x %in% names(dat)) {
-    paste(sort(head(unique(dat[[x]]), n = 10)), collapse = ", ")
-  } else {
-    NA_character_
-  }
-}
-
-foo("vote")
-foo("asd")
-
-variables[, values := foo(varname), by = varname]
-
-write.xlsx(variables, file = "results/variables.xlsx",
-           colWidths = "auto", firstRow = T,
-           headerStyle = createStyle(textDecoration = "italic",
-                                     halign = "center"))
-
-fwrite(variables, file = "tables/variables.csv", quote = T)
-
-
-intersect(names(dat), variables$varname)
-
-head(names(dat), 10)
-tail(names(dat), 10)
-
-varnames.design <- c("essround", "cntry", "idno",
-                     "dweight", "pspwght", "pweight")
-
-dat1 <- dat[, c(varnames.design,
-                intersect(names(dat), variables$varname)), with = F]
-
-dim(dat)
-dim(dat1)
-
-rm(dat)
-gc()
-
 
 # Merge ####
 
-intersect(names(dat1), names(datSDDF2))
+intersect(names(dat), names(datSDDF2))
 
-dat1[, dat_surv := T]
+dat[, dat_surv := T]
 datSDDF2[, dat_sddf := T]
 
-setkey(dat1, essround, cntry, idno)
+setkey(dat, essround, cntry, idno)
 setkey(datSDDF2, essround, cntry, idno)
 
-anyDuplicated(dat1, by = c("essround", "cntry", "idno"))
+anyDuplicated(dat, by = c("essround", "cntry", "idno"))
 anyDuplicated(datSDDF2, by = c("essround", "cntry", "idno"))
 
-dat1[, .N]
+dat[, .N]
 datSDDF2[, .N]
 
 # Test merge ####
-tmp2 <- merge(dat1, datSDDF2,
+tmp2 <- merge(dat, datSDDF2,
               by = c("essround", "cntry", "idno"), all = T)
 
 tmp2[, .N, keyby = .(dat_surv, dat_sddf)]
@@ -222,10 +174,10 @@ tmp2[is.na(dat_sddf), .N, keyby = .(essround, cntry, dat_surv, dat_sddf)]
 
 # Merge ####
 
-dat2 <- merge(dat1, datSDDF2,
+dat2 <- merge(dat, datSDDF2,
               by = c("essround", "cntry", "idno"), all.x = T)
 
-nrow(dat1)
+nrow(dat)
 nrow(dat2)
 
 dat2[, .N, keyby = .(dat_surv, dat_sddf)]
@@ -246,7 +198,7 @@ dat2[, domain := factor(domain)]
 
 # Net sample size
 
-nrow(dat1)
+nrow(dat)
 nrow(dat2)
 
 dat2[, .N, keyby = .(cntry, essround)]
@@ -304,4 +256,3 @@ dat2[, weight1 := dweight * pweight * 10e3]
 # Save ####
 
 save(dat2, file = "data/dat2.Rdata")
-save(variables, file = "data/variables.Rdata")

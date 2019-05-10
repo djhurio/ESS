@@ -144,6 +144,8 @@ lapply(datSDDF, function(x) if ("stratify" %in% names(x))
   setnames(x, "stratify", "stratum"))
 datSDDF <- rbindlist(datSDDF, use.names = T, fill = T, idcol = "file.name")
 
+datSDDF[, file.name := sub(".*/", "", file.name)]
+
 
 #
 class(datSDDF)

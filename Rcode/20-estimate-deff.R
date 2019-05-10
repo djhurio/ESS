@@ -375,6 +375,7 @@ names(tab_deff)
 # pl_summary_effss_800
 
 tab_deff[cntry == "CY"]
+tab_deff[cntry == "HR"]
 
 
 pdf("results/ESS_plot_deff.pdf", width = 16, height = 9)

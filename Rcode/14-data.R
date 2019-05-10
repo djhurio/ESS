@@ -115,3 +115,4 @@ dat[, .N, keyby = .(cntry, essround)]
 # Save ####
 
 save(dat, file = "data/dat.Rdata")
+save(variables, file = "data/variables.Rdata")

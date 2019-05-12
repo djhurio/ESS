@@ -1,0 +1,3 @@
+   essround cntry idno             file.name   N
+1:        4    HU   NA      ESS4_HU_SDDF.por  11
+2:        6    NA   NA ESS6_DK_SDDF.sas7bdat 455

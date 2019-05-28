@@ -40,11 +40,13 @@ class(dat)
 
 # Variables ####
 
-variables <- lapply(list.files("variables", full.names = T), read.table)
-names(variables) <- list.files("variables")
+variables <- read.xlsx(xlsxFile = "variables/ICC-variables.xlsx")
+setDT(variables)
 
-variables <- rbindlist(variables, idcol = "file")
-setnames(variables, "V1", "varname")
+variables <- melt(data = variables, measure.vars = names(variables),
+                  na.rm = T)
+
+setnames(variables, c("type", "varname"))
 variables[, varname := tolower(varname)]
 variables
 

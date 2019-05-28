@@ -250,7 +250,7 @@ tmp[abs(dweight - dweight2) > .1, .N, keyby = .(essround, cntry)]
 
 # dat2[, weight0 := dw]
 dat2[, weight1 := dweight * pweight * 10e3]
-# dat2[, weight2 := dweight * pspwght * pweight * 10e3]
+# dat2[, weight2 := pspwght * pweight * 10e3]
 
 
 # Save ####

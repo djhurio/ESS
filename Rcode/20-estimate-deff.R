@@ -27,8 +27,8 @@ load("data/variables.Rdata")
 
 variables[varname == "ppltrst"]
 
-vars_binary <- variables[ grepl("binary", file) & (is.available), varname]
-vars_other  <- variables[!grepl("binary", file) & (is.available), varname]
+vars_binary <- variables[ grepl("Binary", type) & (is.available), varname]
+vars_other  <- variables[!grepl("Binary", type) & (is.available), varname]
 
 y_vars_binary <- paste("y", vars_binary, sep = "_")
 z_vars_binary <- paste("z", vars_binary, sep = "_")
@@ -412,3 +412,4 @@ write.xlsx(tab_deff, file = "results/ESS_tab_deff.xlsx",
                                      halign = "center"))
 
 fwrite(tab_deff, file = "results/ESS_tab_deff.csv", quote = T)
+

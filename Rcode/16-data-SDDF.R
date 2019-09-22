@@ -5,9 +5,8 @@ options(encoding = "UTF-8")
 options(stringsAsFactors = F)
 
 
-# Install the branch version with this:
-# remotes::install_github("ropensci/essurvey", ref = "sddf",
-#                         quiet = TRUE, upgrade = 'always')
+# Install dev
+devtools::install_github("ropensci/essurvey")
 
 # Packages
 require(data.table)
@@ -28,19 +27,22 @@ gc()
 # ESS data ####
 set_email("martins.liberts@gmail.com")
 
-# Authentification to the ESS website
-# store your e-mail address in a list to be passed to the website
-values <- list(u = Sys.getenv("ESS_EMAIL"))
-url_login <- "http://www.europeansocialsurvey.org/user/login"
-# authenticate on the ess website
-authen <- httr::POST(url_login, body = values)
-check_authen <- httr::GET(url_login, query = values)
-authen_xml <- xml2::read_html(check_authen)
-error_node <- xml2::xml_find_all(authen_xml, '//p [@class="error"]')
+tmp <- import_country(country = "Spain", rounds = 1)
+rm(tmp)
+
+# # Authentification to the ESS website
+# # store your e-mail address in a list to be passed to the website
+# values <- list(u = Sys.getenv("ESS_EMAIL"))
+# url_login <- "http://www.europeansocialsurvey.org/user/login"
+# # authenticate on the ess website
+# authen <- httr::POST(url_login, body = values)
+# check_authen <- httr::GET(url_login, query = values)
+# authen_xml <- xml2::read_html(check_authen)
+# error_node <- xml2::xml_find_all(authen_xml, '//p [@class="error"]')
+
 
 
 # SDDF data ####
-
 root.url <- "https://www.europeansocialsurvey.org"
 
 # Get list of SDDFs
@@ -95,8 +97,10 @@ list.files(path = dir.data, full.names = T, recursive = T)
 file.remove(list.files(path = dir.data, full.names = T, recursive = T))
 list.files(path = dir.data, full.names = T, recursive = T)
 
+# Download
 lapply(zip.urls, get.data, dir.data = dir.data)
 
+warnings()
 
 # Delete pdf and txt files
 list.files(path = dir.data, pattern = "pdf$|txt$",
@@ -105,6 +109,56 @@ file.remove(list.files(path = dir.data, pattern = "pdf$|txt$",
                        full.names = T, recursive = T))
 list.files(path = dir.data, pattern = "pdf$|txt$",
            full.names = T, recursive = T)
+
+
+x <- list.files(path = dir.data, full.names = T, recursive = T, pattern = "ESS1_FR_SDDF.por")
+
+fread(input = "data/SDDF/ESS1_FR_SDDF.por", sep = "", nrows = 1, header = F)$V1
+fread(input = "data/SDDF/ESS1_GB_SDDF.por", sep = "", nrows = 1, header = F)$V1
+
+grepl("SPSS PORT FILE", fread(input = "data/SDDF/ESS1_FR_SDDF.por", sep = "", nrows = 1, header = F)$V1, useBytes = T)
+
+read_spss("data/SDDF/ESS1_FR_SDDF.por")
+read_spss("data/SDDF/ESS1_GB_SDDF.por")
+
+read_spss_2 <- function(file, encoding = NULL, user_na = FALSE) {
+  x <- fread(input = file, sep = "", nrows = 1, header = F)$V1
+  if (grepl("SPSS PORT FILE", x, useBytes = T)) {
+    read_por(file = file, user_na = user_na)
+  } else if (grepl("SPSS DATA FILE", x, useBytes = T)) {
+    read_sav(file = file, encoding = encoding, user_na = user_na)
+  } else {
+    stop("Unknow file format")
+  }
+}
+
+read_spss_2("data/SDDF/ESS1_FR_SDDF.por")
+
+dt1 <- as.data.table(haven::read_sav("data/SDDF/ESS1_GB_SDDF.por"))
+dt2 <- as.data.table(foreign::read.spss("data/SDDF/ESS1_GB_SDDF.por"))
+dt1[, .N, keyby = .(nchar(stratify))]
+dt2[, .N, keyby = .(nchar(stratify))]
+all.equal(dt1, dt2, check.attributes = F)
+
+
+as.data.table(haven::read_por("data/SDDF/ESS1_FR_SDDF.por"))
+as.data.table(foreign::read.spss("data/SDDF/ESS1_FR_SDDF.por"))
+
+
+dt1[, .N, keyby = .(nchar(stratify))]
+dt2[, .N, keyby = .(nchar(stratify))]
+all.equal(dt1, dt2, check.attributes = F)
+
+foreign::read.spss("data/SDDF/ESS1_FR_SDDF.por")
+
+
+con <- file(x, "r", blocking = FALSE, raw = T)
+
+readLines(con, encoding = "ISO-8859") # empty
+cat(" def\n", file = fil, append = TRUE)
+readLines(con) # gets both
+close(con)
+
 
 
 # File names

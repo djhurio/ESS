@@ -244,9 +244,36 @@ tmp[is.na(dweight)]
 tmp[is.na(dweight2)]
 tmp[prob == 0]
 
+tmp[, diff := dweight2 - dweight]
+
+pl <- ggplot(tmp, aes(x = dweight, y = dweight2, colour = diff)) +
+    geom_point() +
+    scale_colour_gradient2(low = "blue", mid = "grey", high = "red") +
+    facet_grid(essround ~ cntry) +
+    theme_bw()
+
+png(filename = "results/plot_dweight.png", width = 1920, height = 1080)
+pl
+dev.off()
+
+
+
+
+tmp[, .N, keyby = .(abs(dweight - dweight2) > .1)]
+
+tmp[abs(dweight - dweight2) > .1][order(abs(dweight - dweight2))]
+
 tmp[abs(dweight - dweight2) > .1,
     .(essround, cntry, prob, dw, dweight, dweight2)]
+
+tmp[abs(dweight - dweight2) > .1 & dweight2 > dweight,
+    .(essround, cntry, prob, dw, dweight, dweight2)]
+tmp[abs(dweight - dweight2) > .1 & dweight2 < dweight,
+    .(essround, cntry, prob, dw, dweight, dweight2)]
+
 tmp[abs(dweight - dweight2) > .1, .N, keyby = .(essround, cntry)]
+tmp[abs(dweight - dweight2) > .1, .N, keyby = .(dweight2 > dweight)]
+
 
 # dat2[, weight0 := dw]
 dat2[, weight1 := dweight * pweight * 10e3]

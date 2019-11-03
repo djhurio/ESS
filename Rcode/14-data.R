@@ -11,6 +11,7 @@ options(datatable.keepLeadingZeros = TRUE)
 # Packages
 require(data.table)
 require(openxlsx)
+require(haven)
 require(lubridate)
 require(essurvey)
 
@@ -29,11 +30,36 @@ set_email("martins.liberts@gmail.com")
 show_rounds()
 
 dat <- import_all_rounds(format = "spss")
+gc()
+
+# dat9 <- read_spss(file = "data/R9/ESS9e01.sav")
+# attributes(dat9[["agea"]])
+# which(names(dat9) == "agea")
+
 length(dat)
 
 sapply(dat, class)
+sapply(dat[[1]], class)
+sapply(dat[[9]], class)
 
-dat <- rbindlist(dat, fill = T)
+names(dat[[9]])[218]
+
+class(dat[[1]][["agea"]])
+class(dat[[9]][["agea"]])
+
+sapply(dat, function(x) class(x[["agea"]]))
+rbindlist(lapply(dat, function(x) attributes(x[["agea"]])), fill = T)
+
+dat[[9]][["agea"]] <- labelled(x = dat[[9]][["agea"]],
+                               labels = c("Not available" = 999),
+                               label = "Age of respondent, calculated")
+
+sapply(dat, function(x) class(x[["agea"]]))
+rbindlist(lapply(dat, function(x) attributes(x[["agea"]])), fill = T)
+
+gc()
+dat <- rbindlist(l = dat, use.names = T, fill = T, idcol = "file")
+
 class(dat)
 
 
@@ -89,7 +115,6 @@ dim(dat)
 dim(dat1)
 
 dat <- dat1
-
 rm(dat1)
 gc()
 
@@ -118,3 +143,5 @@ dat[, .N, keyby = .(cntry, essround)]
 
 save(dat, file = "data/dat.Rdata")
 save(variables, file = "data/variables.Rdata")
+
+gc()

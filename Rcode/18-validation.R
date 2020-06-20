@@ -2,12 +2,17 @@
 
 # Options ####
 options(encoding = "UTF-8")
-options(stringsAsFactors = F)
+options(max.print = 10e3)
+options(datatable.integer64 = "character")
+options(datatable.keepLeadingZeros = TRUE)
+
 
 # Packages
 require(data.table)
 require(openxlsx)
 require(essurvey)
+require(ggplot2)
+
 
 # Reset ####
 rm(list = ls())
@@ -19,7 +24,8 @@ load("data/datSDDF.Rdata")
 
 show_rounds()
 datSDDF[, essround := factor(essround, show_rounds(), show_rounds())]
-dcast(datSDDF, cntry ~ essround)
+
+dcast(datSDDF, cntry ~ paste0("R", essround), fun.aggregate = length)
 
 
 # Sampling information ####
@@ -30,24 +36,28 @@ names(datSDDF)
 datSDDF[, lapply(.SD, class)]
 
 datSDDF[, .N, cntry][order(N)]
-dcast(datSDDF, cntry ~ essround)
 
 datSDDF[cntry == "NA"]
 datSDDF[cntry == "NA", .N]
 datSDDF[cntry == "NA", .N,
-        keyby = .(essround, cntry, idno, file.name)]
+        keyby = .(essround, cntry, idno)]
 
 datSDDF[cntry != "NA" & is.na(idno)]
 datSDDF[cntry != "NA" & is.na(idno), .N]
 datSDDF[cntry != "NA" & is.na(idno), .N,
-        keyby = .(essround, cntry, idno, file.name)]
+        keyby = .(essround, cntry, idno)]
 
 datSDDF[cntry == "NA" | is.na(idno), .N]
 datSDDF[cntry == "NA" | is.na(idno), .N,
-        keyby = .(essround, cntry, idno, file.name)]
+        keyby = .(essround, cntry, idno)]
+
 
 # Delete empty records
 datSDDF <- datSDDF[!is.na(idno)]
+
+# domain
+datSDDF[domain == 0L, domain := 1L]
+dcast.data.table(datSDDF, essround ~ domain, fun.aggregate = length)
 
 anyDuplicated(datSDDF, by = c("essround", "cntry", "domain", "idno"))
 
@@ -89,6 +99,7 @@ datSDDF[, n_na_psu := sum(is.na(psu)), by = .(essround, cntry, domain)]
 datSDDF[n_na_psu > 0, .(.N, sum(is.na(psu))),
         keyby = .(essround, cntry, domain)]
 
+
 # psu := idno if all psu are NA
 datSDDF[n_na_psu == netsamps,
         .(.N, sum(is.na(psu))), keyby = .(essround, cntry)]
@@ -112,11 +123,11 @@ datSDDF[, .N, keyby = .(STR, PSU)]
 datSDDF[is.na(psu), .(stratum, psu, STR, PSU)]
 
 tab_cntry <- datSDDF[, .(n_strat = sum(!duplicated(STR)),
-                         n_psu = sum(!duplicated(PSU)),
-                         n_resp = .N), keyby = .(essround, cntry, domain)]
+                         n_psu   = sum(!duplicated(PSU)),
+                         n_resp  = .N), keyby = .(essround, cntry, domain)]
 tab_cntry
 
-tab_strata <- datSDDF[, .(n_psu = sum(!duplicated(PSU)),
+tab_strata <- datSDDF[, .(n_psu  = sum(!duplicated(PSU)),
                           n_resp = .N),
                       keyby = .(essround, cntry, domain, STR)]
 tab_strata
@@ -143,7 +154,11 @@ load("data/dat.Rdata")
 
 show_rounds()
 dat[, essround := factor(essround, show_rounds(), show_rounds())]
-dcast(dat, cntry ~ essround)
+
+tab <- dcast(dat, cntry ~ paste0("R", essround), fun.aggregate = length)
+tab
+fwrite(tab, file = "tables/ESS_country_rounds.csv")
+
 
 
 
@@ -157,7 +172,7 @@ datSDDF2[, dat_sddf := T]
 setkey(dat, essround, cntry, idno)
 setkey(datSDDF2, essround, cntry, idno)
 
-anyDuplicated(dat, by = c("essround", "cntry", "idno"))
+anyDuplicated(dat,      by = c("essround", "cntry", "idno"))
 anyDuplicated(datSDDF2, by = c("essround", "cntry", "idno"))
 
 dat[, .N]
@@ -185,6 +200,7 @@ dat2[is.na(dat_surv), .N, keyby = .(essround, cntry, dat_surv, dat_sddf)]
 dat2[is.na(dat_sddf), .N, keyby = .(essround, cntry, dat_surv, dat_sddf)]
 
 dat2[is.na(dat_sddf) & essround == 8]
+dat2[is.na(dat_sddf) & essround == 9]
 
 dat2[, n_na := sum(is.na(dat_sddf)), by = .(essround, cntry)]
 
@@ -209,29 +225,33 @@ dat2[cntry == "LT", .N, keyby = .(cntry, essround, domain)]
 
 
 # Weights
-dat2[(dat_sddf), .(essround, cntry, dweight, pspwght, pweight, prob)]
+dat2[(dat_sddf), .(essround, cntry, dweight, pspwght, pweight, anweight, prob)]
 
 dat2[(dat_sddf), .N, keyby = .(is.na(prob), is.na(dweight))]
 
-dat2[, .N, keyby = .(dweight = !is.na(dweight),
-                     pspwght = !is.na(pspwght),
-                     pweight = !is.na(pweight))]
+dat2[, .N, keyby = .(essround,
+                     dweight  = !is.na(dweight),
+                     pspwght  = !is.na(pspwght),
+                     pweight  = !is.na(pweight),
+                     anweight = !is.na(anweight))]
 
-dat2[is.na(dweight), .(essround, cntry, dweight, pspwght, pweight)]
+dat2[is.na(dweight), .(essround, cntry, dweight, pspwght, pweight, anweight)]
 
 
 # Design weights computed from sampling probabilities
 dat2[, summary(prob)]
-dat2[, min(prob)]
 
-dat2[(dat_sddf) & prob > 0, dw := 1 / prob]
-dat2[prob == 0, dw := 1]
+dat2[prob == 0, .N, keyby = .(essround, cntry)]
+dat2[prob >  1, .N, keyby = .(essround, cntry)]
+
+dat2[prob >  0, dw := 1 / prob]
+dat2[prob == 0 | prob > 1, dw := 1]
 
 tmp <- dat2[(dat_sddf),
-            .(essround, cntry, dweight, pspwght, pweight, prob, dw)]
+            .(essround, cntry, dweight, pspwght, pweight, anweight, prob, dw)]
 
 tmp[, c(.(n = .N), lapply(.SD, sum)),
-    .SDcols = c("dweight", "pspwght", "pweight"),
+    .SDcols = c("dweight", "pspwght", "pweight", "anweight"),
     keyby = .(essround, cntry)]
 
 tmp[, dweight2 := .N * dw / sum(dw), by = .(essround, cntry)]
@@ -239,6 +259,7 @@ tmp[, dweight2 := .N * dw / sum(dw), by = .(essround, cntry)]
 tmp[is.na(dweight2)]
 
 tmp[, all.equal(dweight, dweight2, check.attributes = F)]
+tmp[order(abs(dweight - dweight2))]
 
 tmp[is.na(dweight)]
 tmp[is.na(dweight2)]
@@ -253,9 +274,10 @@ pl <- ggplot(tmp, aes(x = dweight, y = dweight2, colour = diff)) +
     theme_bw()
 
 png(filename = "results/plot_dweight.png", width = 1920, height = 1080)
-pl
+print(pl)
 dev.off()
 
+# Extreme design weights are being cut
 
 
 
@@ -275,9 +297,12 @@ tmp[abs(dweight - dweight2) > .1, .N, keyby = .(essround, cntry)]
 tmp[abs(dweight - dweight2) > .1, .N, keyby = .(dweight2 > dweight)]
 
 
-# dat2[, weight0 := dw]
-dat2[, weight1 := dweight * pweight * 10e3]
-# dat2[, weight2 := pspwght * pweight * 10e3]
+# dat2[, weight1 := dweight * pweight * 10e3]
+dat2[, weight_des := dw]
+dat2[, weight_est := pspwght * pweight * 10e3]
+
+dat2[, lapply(.SD, sum), .SDcols = c("weight_des", "weight_est"),
+     keyby = .(essround, cntry)]
 
 
 # Save ####

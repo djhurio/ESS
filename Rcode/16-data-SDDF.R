@@ -2,21 +2,21 @@
 
 # Options ####
 options(encoding = "UTF-8")
-options(stringsAsFactors = F)
+options(max.print = 10e3)
+options(datatable.integer64 = "character")
+options(datatable.keepLeadingZeros = TRUE)
 
-
-# Install dev
-devtools::install_github("ropensci/essurvey")
 
 # Packages
 require(data.table)
 require(lubridate)
-require(haven)
-require(foreign)
-require(rvest)
 require(stringr)
 require(essurvey)
 require(openxlsx)
+require(parallel)
+
+detectCores()
+
 
 # Reset ####
 rm(list = ls())
@@ -25,193 +25,61 @@ gc()
 
 
 # ESS data ####
-set_email("martins.liberts@gmail.com")
-
-tmp <- import_country(country = "Spain", rounds = 1)
-rm(tmp)
-
-# # Authentification to the ESS website
-# # store your e-mail address in a list to be passed to the website
-# values <- list(u = Sys.getenv("ESS_EMAIL"))
-# url_login <- "http://www.europeansocialsurvey.org/user/login"
-# # authenticate on the ess website
-# authen <- httr::POST(url_login, body = values)
-# check_authen <- httr::GET(url_login, query = values)
-# authen_xml <- xml2::read_html(check_authen)
-# error_node <- xml2::xml_find_all(authen_xml, '//p [@class="error"]')
+set_email("martins.liberts+ess@gmail.com")
 
 
+# Rounds 1:8
+t1 <- Sys.time()
+dat <- mclapply(show_countries(), function(cntry) {
+  lapply(show_sddf_cntrounds(cntry), function(rnd) {
+    cat(cntry, "round", rnd, "\n")
+    sddf <- import_sddf_country(country = cntry, rounds = rnd)
+    setDT(sddf)
+    sddf[, essround := rnd]
+    sddf
+  })
+}, mc.silent = F, mc.cores = 4)
+t2 <- Sys.time()
+t2 - t1
+# Time difference of 5.753322 mins
 
-# SDDF data ####
-root.url <- "https://www.europeansocialsurvey.org"
+dat <- unlist(dat, recursive = F)
 
-# Get list of SDDFs
-html.doc <- read_html(paste0(root.url, "/data/download_sample_data.html"))
-url.list <- html_nodes(html.doc, "a") %>% html_attr(name = "href")
-SDDF.url.list <- sort(paste0(root.url, grep("SDDF", url.list, value = T)))
-length(SDDF.url.list)
-
-
-# Get list of ZIP files
-get.zip.urls <- function(url) {
-  html.doc <- read_html(url)
-  url.list <- html_nodes(html.doc, "a") %>% html_attr(name = "href")
-  paste0(root.url, grep("zip", url.list, value = T))
-}
-
-# get.zip.urls(SDDF.url.list[1])
-zip.urls <- sort(unlist(lapply(SDDF.url.list, get.zip.urls)))
-length(zip.urls)
+datSDDF1 <- rbindlist(dat, use.names = T, fill = T)
 
 
-# Download & extract zips
+# Round 9
+dat <- import_rounds(rounds = 9)
+setDT(dat)
 
-# Function to download and extract files
-get.data <- function(file.url, dir.data) {
-  # Print download link
-  cat(file.url, "\n\n")
+varnames <- intersect(names(datSDDF1), names(dat))
+datSDDF9 <- dat[, ..varnames]
+rm(dat)
 
-  # Remove any existing pdf or zip files
-  # file.remove(list.files(dir.data, pattern = "pdf$|zip$", full.names = T))
+# Domain variable for R9
+dat.domain.r9 <- haven::read_stata("data/R9/ess9_domain.dta")
+setDT(dat.domain.r9)
 
-  # File name
-  f <- str_extract(file.url, "ESS.*zip")
+datSDDF9[, .(min_idno = min(idno), max_idno = max(idno)), keyby = .(cntry)]
+dat.domain.r9[, .(min_idno = min(idno), max_idno = max(idno)), keyby = .(cntry)]
 
-  # Download
-  current_file <- httr::GET(file.url, httr::progress())
-
-  # Write as a .zip file
-  writeBin(httr::content(current_file, as = "raw"), file.path(dir.data, f))
-
-  # Unzip
-  utils::unzip(zipfile = file.path(dir.data, f), exdir = dir.data)
-
-  # Delete zip
-  file.remove(file.path(dir.data, f))
-}
-
-dir.data <- "data/SDDF"
-
-# Delete all data files
-list.files(path = dir.data, full.names = T, recursive = T)
-file.remove(list.files(path = dir.data, full.names = T, recursive = T))
-list.files(path = dir.data, full.names = T, recursive = T)
-
-# Download
-lapply(zip.urls, get.data, dir.data = dir.data)
-
-warnings()
-
-# Delete pdf and txt files
-list.files(path = dir.data, pattern = "pdf$|txt$",
-           full.names = T, recursive = T)
-file.remove(list.files(path = dir.data, pattern = "pdf$|txt$",
-                       full.names = T, recursive = T))
-list.files(path = dir.data, pattern = "pdf$|txt$",
-           full.names = T, recursive = T)
-
-
-x <- list.files(path = dir.data, full.names = T, recursive = T, pattern = "ESS1_FR_SDDF.por")
-
-fread(input = "data/SDDF/ESS1_FR_SDDF.por", sep = "", nrows = 1, header = F)$V1
-fread(input = "data/SDDF/ESS1_GB_SDDF.por", sep = "", nrows = 1, header = F)$V1
-
-grepl("SPSS PORT FILE", fread(input = "data/SDDF/ESS1_FR_SDDF.por", sep = "", nrows = 1, header = F)$V1, useBytes = T)
-
-read_spss("data/SDDF/ESS1_FR_SDDF.por")
-read_spss("data/SDDF/ESS1_GB_SDDF.por")
-
-read_spss_2 <- function(file, encoding = NULL, user_na = FALSE) {
-  x <- fread(input = file, sep = "", nrows = 1, header = F)$V1
-  if (grepl("SPSS PORT FILE", x, useBytes = T)) {
-    read_por(file = file, user_na = user_na)
-  } else if (grepl("SPSS DATA FILE", x, useBytes = T)) {
-    read_sav(file = file, encoding = encoding, user_na = user_na)
-  } else {
-    stop("Unknow file format")
-  }
-}
-
-read_spss_2("data/SDDF/ESS1_FR_SDDF.por")
-
-dt1 <- as.data.table(haven::read_sav("data/SDDF/ESS1_GB_SDDF.por"))
-dt2 <- as.data.table(foreign::read.spss("data/SDDF/ESS1_GB_SDDF.por"))
-dt1[, .N, keyby = .(nchar(stratify))]
-dt2[, .N, keyby = .(nchar(stratify))]
-all.equal(dt1, dt2, check.attributes = F)
-
-
-as.data.table(haven::read_por("data/SDDF/ESS1_FR_SDDF.por"))
-as.data.table(foreign::read.spss("data/SDDF/ESS1_FR_SDDF.por"))
-
-
-dt1[, .N, keyby = .(nchar(stratify))]
-dt2[, .N, keyby = .(nchar(stratify))]
-all.equal(dt1, dt2, check.attributes = F)
-
-foreign::read.spss("data/SDDF/ESS1_FR_SDDF.por")
-
-
-con <- file(x, "r", blocking = FALSE, raw = T)
-
-readLines(con, encoding = "ISO-8859") # empty
-cat(" def\n", file = fil, append = TRUE)
-readLines(con) # gets both
-close(con)
+# datSDDF9 <- merge(datSDDF9, dat.domain.r9,
+#                   by = intersect(names(datSDDF9), names(dat.domain.r9)))
 
 
 
-# File names
-fnames <- data.table(file.name = toupper(list.files(path = dir.data)))
-fnames[, file.name := gsub("-", "_", file.name)]
-fnames[, c("name", "ext") := tstrsplit(file.name, split = "\\.")]
-fnames <- dcast.data.table(data = fnames, formula = name ~ ext,
-                           fun.aggregate = length, value.var = "file.name")
-write.xlsx(x = fnames, file = "results/SDDF-file-names.xlsx", firstRow = T)
+# Combine SDDF for rounds 1:9
+datSDDF <- rbindlist(list(datSDDF1, datSDDF9), use.names = T, fill = T)
+
+rm(dat, datSDDF1, datSDDF9)
+gc()
 
 
-# Import SDDF data files
+# Process the SDDF
 
-length(list.files(dir.data, "\\.sas7bdat$", full.names = T))
-length(list.files(dir.data, "\\.sav$", full.names = T))
-length(list.files(dir.data, "\\.por$", full.names = T))
-length(list.files(dir.data, "\\.dta$", full.names = T))
-length(list.files(dir.data, "\\.dat$", full.names = T))
-
-datSDDF.por <- sapply(list.files(dir.data, "^...[1-4].*por$",
-                                 full.names = T),
-                      foreign::read.spss, use.value.labels = F, simplify = F)
-
-datSDDF.sav <- sapply(list.files(dir.data, "^...[578].*sav$",
-                                 full.names = T),
-                      foreign::read.spss, use.value.labels = F, simplify = F)
-
-datSDDF.sas <- sapply(list.files(dir.data, "^...[6].*sas7bdat$",
-                                 full.names = T),
-                      haven::read_sas, encoding = "UTF-8", simplify = F)
-
-datSDDF <- c(datSDDF.por, datSDDF.sav, datSDDF.sas)
-
-lapply(datSDDF, setDT)
-lapply(datSDDF, function(x) setnames(x, tolower(names(x))))
-lapply(datSDDF, function(x) if ("stratify" %in% names(x))
-  setnames(x, "stratify", "stratum"))
-datSDDF <- rbindlist(datSDDF, use.names = T, fill = T, idcol = "file.name")
-
-datSDDF[, file.name := sub(".*/", "", file.name)]
-
-
-#
 class(datSDDF)
 
 datSDDF[, .N, keyby = cntry]
-
-datSDDF[order(cntry), .(file.name, cntry)]
-
-datSDDF[, .N, keyby = str_extract(toupper(file.name), "ESS[1-9]")]
-
-datSDDF[, essround := str_extract(toupper(file.name), "ESS[1-9]")]
-datSDDF[, essround := as.integer(str_extract(essround, "[1-9]"))]
 
 datSDDF[, .N, keyby = essround]
 
@@ -219,13 +87,12 @@ sapply(datSDDF, class)
 
 
 datSDDF[, .N, keyby = .(round(domain))]
-datSDDF[is.na(domain), domain := 0L]
+datSDDF[is.na(domain), domain := 1L]
 datSDDF[, .N, keyby = .(round(domain))]
 
 
 
-datSDDF <- datSDDF[, .(essround, cntry, idno, domain,
-                       stratum, psu, prob, file.name)]
+datSDDF <- datSDDF[, .(essround, cntry, idno, domain, stratum, psu, prob)]
 
 datSDDF[, lapply(.SD, class)]
 

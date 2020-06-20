@@ -2,10 +2,13 @@
 
 # Options ####
 options(encoding = "UTF-8")
-options(stringsAsFactors = F)
+options(max.print = 10e3)
+options(datatable.integer64 = "character")
+options(datatable.keepLeadingZeros = TRUE)
 
 
 # Packages
+# require(parallel)
 require(data.table)
 require(openxlsx)
 require(vardpoor)
@@ -15,17 +18,15 @@ require(essurvey)
 
 
 # Reset ####
-
 rm(list = ls())
 gc()
 
 
 # Load data ####
-
 load("data/dat2.Rdata")
 load("data/variables.Rdata")
 
-variables[varname == "ppltrst"]
+variables[, .N, keyby = .(type)]
 
 vars_binary <- variables[ grepl("Binary", type) & (is.available), varname]
 vars_other  <- variables[!grepl("Binary", type) & (is.available), varname]
@@ -51,24 +52,23 @@ dat2[, c(z_vars_other) := lapply(.SD, function(x) as.integer(!is.na(x))),
 
 
 
+# Test
 # PPLTRST Most people can be trusted or you can't be too careful
 # Valid values are from 0 to 10
-
 dat2[, .N, keyby = ppltrst]
-
-dcast(dat2, essround + cntry ~ ppltrst)
+dcast(dat2, essround + cntry ~ ppltrst, fun.aggregate = length)
 
 dat2[!is.na(ppltrst), var(ppltrst), keyby = .(essround, cntry)]
 
-dat2[!is.na(ppltrst), .(ppltrst1 = weighted.mean(ppltrst, weight1))]
+dat2[!is.na(ppltrst), .(ppltrst1 = weighted.mean(ppltrst, weight_est))]
 
 # Test run ####
-dat2[, .(ppltrst1 = sum(y_ppltrst * weight1) / sum(z_ppltrst * weight1))]
+dat2[, .(ppltrst1 = sum(y_ppltrst * weight_est) / sum(z_ppltrst * weight_est))]
 
-dat2[!is.na(ppltrst), .(ppltrst1 = weighted.mean(ppltrst, weight1)),
+dat2[!is.na(ppltrst), .(ppltrst1 = weighted.mean(ppltrst, weight_est)),
      keyby = .(essround, cntry)]
 
-dat2[, .(ppltrst1 = sum(y_ppltrst * weight1) / sum(z_ppltrst * weight1)),
+dat2[, .(ppltrst1 = sum(y_ppltrst * weight_est) / sum(z_ppltrst * weight_est)),
      keyby = .(essround, cntry)]
 
 
@@ -76,7 +76,7 @@ dat2[, .(ppltrst1 = sum(y_ppltrst * weight1) / sum(z_ppltrst * weight1)),
 
 dat2[, .N, keyby = .(essround, cntry, STR)]
 
-tab <- dat2[, .(n = .N, pop = sum(weight1)),
+tab <- dat2[, .(n = .N, pop = sum(weight_est)),
             keyby = .(essround, cntry, STR, PSU)]
 tab <- tab[, .(n = .N, pop = sum(pop)), keyby = .(essround, cntry, STR)]
 tab
@@ -91,9 +91,19 @@ dat2[, .N, keyby = essround_cntry_dom]
 y_vars <- c(y_vars_binary, y_vars_other)
 z_vars <- c(z_vars_binary, z_vars_other)
 
+tab_y <- dat2[, lapply(.SD[, y_vars, with = F],
+                       function(x) sum(x * weight_est)),
+              keyby = .(essround_cntry_dom)]
+
+tab_z <- dat2[, lapply(.SD[, z_vars, with = F],
+                       function(x) sum(x * weight_est)),
+              keyby = .(essround_cntry_dom)]
+
+
 dat_deff0 <- vardom(Y = y_vars, Z = z_vars,
-                    H = "STR", PSU = "PSU", w_final = "weight1",
-                    period = "essround_cntry_dom", fh_zero = TRUE,
+                    H = "STR", PSU = "PSU", w_final = "weight_est",
+                    period = "essround_cntry_dom",
+                    fh_zero = TRUE,
                     dataset = dat2, outp_lin = T)
 
 dat2[, .N, keyby = .(essround_cntry, STR, PSU)]
@@ -179,20 +189,29 @@ lin_out[sd == 0]
 dat_b[, summary(b)]
 vlist <- dat_b[, essround_cntry_dom]
 
-estimICC <- function(x) {
-  cat(x, "\n\n")
-  dat <- lin_out[essround_cntry_dom == x & !is.na(value) & sd > 0]
-  dat[, psu := factor(PSU)]
-  dat[, .(ICC = ICCbare(psu, value)),
-      keyby = .(essround_cntry_dom, variable)]
-}
-
-# estimICC(vlist[3])
+# estimICC <- function(x) {
+#   cat(x, "\n\n")
+#   dat <- lin_out[essround_cntry_dom == x & !is.na(value) & sd > 0]
+#   dat[, psu := factor(PSU)]
+#   dat[, .(ICC = ICCbare(psu, value)),
+#       keyby = .(essround_cntry_dom, variable)]
+# }
+#
+# estimICC(vlist[1])
 # lin_out[essround_cntry_dom == vlist[1] & variable == "y_dscretn"][order(value)]
 # dat2[essround_cntry_dom == vlist[1],
 #      .(dscretn, y_dscretn, z_dscretn)][order(dscretn)]
-
+#
+# t1 <- Sys.time()
 # dat_ICC <- lapply(vlist, estimICC)
+# t2 <- Sys.time()
+# t2 - t1
+# # Time difference of 37.93939 mins
+#
+# warnings()
+#
+# stop()
+#
 # dat_ICC <- rbindlist(dat_ICC, use.names = T)
 # save(dat_ICC, file = "data/dat_ICC.Rdata")
 

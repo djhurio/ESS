@@ -63,15 +63,15 @@ setDT(dat.domain.r9)
 datSDDF9[, .(min_idno = min(idno), max_idno = max(idno)), keyby = .(cntry)]
 dat.domain.r9[, .(min_idno = min(idno), max_idno = max(idno)), keyby = .(cntry)]
 
-# datSDDF9 <- merge(datSDDF9, dat.domain.r9,
-#                   by = intersect(names(datSDDF9), names(dat.domain.r9)))
+datSDDF9 <- merge(datSDDF9, dat.domain.r9,
+                  by = intersect(names(datSDDF9), names(dat.domain.r9)))
 
 
 
 # Combine SDDF for rounds 1:9
 datSDDF <- rbindlist(list(datSDDF1, datSDDF9), use.names = T, fill = T)
 
-rm(dat, datSDDF1, datSDDF9)
+rm(datSDDF1, datSDDF9)
 gc()
 
 
@@ -85,11 +85,17 @@ datSDDF[, .N, keyby = essround]
 
 sapply(datSDDF, class)
 
+datSDDF[, .N, keyby = .(domain)]
 
-datSDDF[, .N, keyby = .(round(domain))]
+datSDDF[, domain := as.integer(domain)]
+datSDDF[, .N, keyby = .(domain)]
+
 datSDDF[is.na(domain), domain := 1L]
-datSDDF[, .N, keyby = .(round(domain))]
+datSDDF[, .N, keyby = .(domain)]
 
+
+dcast.data.table(data = datSDDF, formula = essround ~ domain,
+                 fun.aggregate = length)
 
 
 datSDDF <- datSDDF[, .(essround, cntry, idno, domain, stratum, psu, prob)]

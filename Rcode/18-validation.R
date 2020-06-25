@@ -297,8 +297,8 @@ tmp[abs(dweight - dweight2) > .1, .N, keyby = .(essround, cntry)]
 tmp[abs(dweight - dweight2) > .1, .N, keyby = .(dweight2 > dweight)]
 
 
-# dat2[, weight1 := dweight * pweight * 10e3]
-dat2[, weight_des := dw]
+# dat2[, weight_des := dw]
+dat2[, weight_des := dweight * pweight * 10e3]
 dat2[, weight_est := pspwght * pweight * 10e3]
 
 dat2[, lapply(.SD, sum), .SDcols = c("weight_des", "weight_est"),

@@ -98,11 +98,11 @@ tab_psu[max_sd_y_psu == 0]
 tab_variables <- dat3[, .(n_resp = .N,
                           n_na = sum(is.na(value)),
                           sd_y = sd(value_y),
-                          sd_z = sd(value_z),
                           pop_size = sum(weight_est),
-                          total_Y  = sum(value_y * weight_est),
-                          total_Z  = sum(value_z * weight_est)),
-                      keyby = .(varname_ext, essround, cntry, domain, varname)]
+                          total_Y  = sum(weight_est * value_y),
+                          total_Z  = sum(weight_est * value_z)),
+                      keyby = .(varname_ext, essround, cntry, domain,
+                                varname, type)]
 
 tab_variables <- merge(tab_variables, dat_b,
                        by = c("essround", "cntry", "domain"), all.x = T)
@@ -114,31 +114,27 @@ tab_variables[total_Z > 0, ratio := total_Y / total_Z]
 
 
 # Cases where esimtation is not possible
-tab_variables[n_na == n_resp]
-tab_variables[n_resp - n_na == 1L]
-tab_variables[n_na < n_resp & total_Y == 0]
-tab_variables[n_na < n_resp & total_Y > 0 & total_Y == total_Z]
-tab_variables[sd_y == 0]
-tab_variables[max_sd_y_psu == 0]
+tab_variables[n_na == n_resp] # All cases missing
+tab_variables[n_resp - n_na == 1L] # Only 1 respondent
+tab_variables[n_na < n_resp & total_Y == 0] # All answers are 0
+tab_variables[n_na < n_resp & total_Y > 0 & total_Y == total_Z] # All answers are 1
+tab_variables[sd_y == 0] # No variation in variable
+tab_variables[max_sd_y_psu == 0] # No variation in PSUs
 
 # Mark varibales where estimation of effective sample size is not possible:
 # 1) variable is a constant (sd_y == 0)
 # 2) mean estimate is 1 (total_Y == total_Z)
 # 3) There is only one respondent ((n_resp - n_na) == 1L)
 # 4) There is no variance in PSUs (max_sd_y_psu == 0)
-tab_variables[, flag := b > 1 & (sd_y == 0 | total_Y == total_Z |
+tab_variables[, flag := (b > 1) & (sd_y == 0 | total_Y == total_Z |
                 (n_resp - n_na) == 1L | max_sd_y_psu == 0)]
 tab_variables[, .N, keyby = .(flag)]
+
 
 # Aggregate up to round and country
 tab_variables[, flag := any(flag), by = .(essround, cntry, varname)]
 tab_variables[, .N, keyby = .(flag)]
-#     flag     N
-# 1: FALSE 13227
-# 2:  TRUE   948
 
-
-tab_variables[!(flag) & b > 1 & max_sd_y_psu == 0, .N, keyby = .(varname_ext)]
 
 # Number of variables by country, domain, round
 dcast.data.table(data = tab_variables[!(flag)],
@@ -148,31 +144,47 @@ dcast.data.table(data = tab_variables[!(flag)],
 save(tab_variables, file = "data/tab_variables.Rdata")
 
 
-# List of extended variable names to be used in claculations
-varname_list <- tab_variables[!(flag) & b > 1, varname_ext]
+# List of extended variable names to be used in ICC claculations
+varname_list <- tab_variables[(b > 1) & !(flag), varname_ext]
 length(varname_list)
-
-head(varname_list)
-tail(varname_list)
 
 
 # Estimate ICC ####
 
+# R package
+#
+# ICC: Facilitating Estimation of the Intraclass Correlation Coefficient
+#
+# Assist in the estimation of the Intraclass Correlation Coefficient (ICC) from
+# variance components of a one-way analysis of variance and also estimate the
+# number of individuals or groups necessary to obtain an ICC estimate with a
+# desired confidence interval width.
+#
+# https://cran.r-project.org/package=ICC
+# https://github.com/matthewwolak/ICC
+
+# How Stata deals with missing values for ICC estimation?
+# https://stats.stackexchange.com/q/474329/3330
+
+# Why is the equation for Intra-class correlation aligned with design effect of
+# cluster sampling?
+# https://stats.stackexchange.com/q/436816/3330
+
+# Methods in Sample Surveys
+# Cluster Sampling
+# https://ocw.jhsph.edu/courses/StatMethodsForSampleSurveys/PDFs/Lecture5.pdf
+
+
 # Linearized variables
-dat3
+setkey(dat3, varname_ext, PSU)
 
-# # PSU size
-# dat3[, PSU_size := .N, by = .(varname_ext, PSU)]
-# dat3[, .N, keyby = .(PSU_size)]
-#
-# dat3[, max_PSU_size := max(PSU_size), by = .(varname_ext)]
-#
-# dat3[max_PSU_size == 1, .N, keyby = .(essround, cntry, domain)]
+# Mark PSUs with missing values
+dat3[, PSU_na := any(is.na(value)), by = .(varname_ext, PSU)]
+dat3[(PSU_na)]
 
-# tmp <- dat3[(varname_list), sd(lin_val), keyby = .(varname_ext)]
-# tmp[order(V1)]
 
-# # Test
+# Test - compare ICC with samplesize4surveys
+
 # set.seed(1)
 # tmp <- sort(sample(varname_list, 10))
 # dat3[(tmp), ICC::ICCbare(x = factor(PSU), y = lin_val, data = .SD),
@@ -192,33 +204,14 @@ dat3
 
 estimICC <- function(x) {
   cat(which(x == varname_list), "/", length(varname_list), ":", x, "\n")
-  dat3[(x), .(ICC = max(0, ICC::ICCbare(x = factor(PSU), y = lin_val))),
-       by = .(varname_ext)]
+  data.table(varname_ext = x,
+             ICC = max(0, ICC::ICCbare(x = factor(PSU),
+                                       y = lin_val,
+                                       data = dat3[(x)])))
 }
 
-# estimICC(varname_list[1])
+estimICC(sample(varname_list, 1))
 
-# options(warn = 1)
-# estimICC("R1_CZ_D1_dscretn")
-# dat3[("R1_CZ_D1_dscretn"), .N, keyby = .(value, value_y, value_z)]
-# dat3[("R1_CZ_D1_dscretn")][value_y == 1]
-#
-# options(warn = 1)
-# estimICC("R1_CZ_D1_dscrrlg")
-# dat3[("R1_CZ_D1_dscrrlg"), .N, keyby = .(value, value_y, value_z)]
-# dat3[("R1_CZ_D1_dscrrlg")][value_y == 1]
-# dat3[("R1_CZ_D1_dscrrlg")][, sd(lin_val), keyby = .(PSU)][!is.na(V1)][order(V1)]
-#
-# options(warn = 1)
-# estimICC("R6_HU_D1_dscrsex")
-# dat3[("R6_HU_D1_dscrsex"), .N, keyby = .(value, value_y, value_z)]
-# dat3[("R6_HU_D1_dscrsex")][value_y == 1]
-#
-# options(warn = 1)
-# estimICC("R6_IS_D1_dscrntn")
-# dat3[("R6_IS_D1_dscrntn"), .N, keyby = .(value, value_y, value_z, lin_val)]
-# dat3[("R6_IS_D1_dscrntn")][value_y == 1]
-# dat3[("R6_IS_D1_dscrntn")][, sd(lin_val), keyby = .(PSU)][!is.na(V1)][order(V1)]
 
 # ICC testing
 # The case of ESS8 CZ data
@@ -226,23 +219,54 @@ estimICC <- function(x) {
 # Load ICC estimates received from Peter
 ICC.est.test <- fread(file = "data/ESS8-CZ-ICC-Peter.txt", sep = " ",
                       drop = c(1, 2, 6), blank.lines.skip = T, na.strings = ".")
-str(ICC.est.test)
 
-ICC.est <- rbindlist(lapply(grep("R8_CZ", varname_list, value = T), estimICC))
+# x <- "R9_LV_D1_happy"
+
+estimICC_test <- function(x) {
+  cat("TEST:", x, "\n")
+
+  tab.anova <- anova(aov(value ~ PSU, data = dat3[(x)][!is.na(value)]))
+  MeanSq <- tab.anova$`Mean Sq`
+
+  psu.size  <- dat3[(x)][!is.na(value), .N, by = .(PSU)][, N]
+  psu.count <- length(psu.size)
+
+  var.a <- (MeanSq[1] - MeanSq[2]) /
+    ((1 / (psu.count - 1)) * (sum(psu.size) - (sum(psu.size ^ 2) / sum(psu.size))))
+
+  data.table(varname_ext = x,
+             ICC1 = max(0, ICC::ICCbare(x = factor(PSU),
+                                        y = lin_val,
+                                        data = dat3[(x)])),
+             ICC2 = max(0, ICC::ICCbare(x = factor(PSU),
+                                        y = value,
+                                        data = dat3[(x)][!is.na(value)])),
+             ICC3 = max(0, ICC::ICCbare(x = factor(PSU),
+                                        y = value,
+                                        data = dat3[(x)][!(PSU_na)])),
+             ICC4 = max(0, var.a / (MeanSq[2] + var.a)))
+}
+
+estimICC_test("R8_CZ_D1_aesfdrk")
+# 0.1403413
+
+estimICC_test(sample(varname_list, 1))
+
+ICC.est <- rbindlist(lapply(grep("R8_CZ", varname_list, value = T),
+                            estimICC_test))
 ICC.est
 
 dat_test <- merge(tab_variables[cntry == "CZ" & essround == 8], ICC.est,
                   by = "varname_ext", all.x = T)
 dat_test <- merge(dat_test, ICC.est.test, by = c("cntry", "varname"), all.x = T)
 
-dat_test[, diff := ICC - roh]
-dat_test[, abs_diff := abs(diff)]
+dat_test[, test1 := abs(ICC1 - roh) < 1e-6]
+dat_test[, test2 := abs(ICC2 - roh) < 1e-6]
+dat_test[, test3 := abs(ICC3 - roh) < 1e-6]
 
-dat_test[, test := abs_diff < 1e-6]
-dat_test[, .N, keyby = .(test)]
+dat_test[, .N, keyby = .(flag, test1, test2, test3)]
 
-dat_test[(test)]
-dat_test[!(test)]
+dat_test[!(test1), .(varname_ext, n_na, ICC1, ICC2, ICC3, roh)]
 
 dat_test[is.na(test)]
 dat_test[!is.na(test)][order(abs(diff))]

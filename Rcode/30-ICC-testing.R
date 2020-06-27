@@ -1,7 +1,7 @@
 # ICC testing
 # The case of ESS8 CZ data
 
-# Noklusētās MND R opcijas
+# Options
 options(encoding = "UTF-8")
 options(stringsAsFactors = F)
 options(max.print = 10e3)

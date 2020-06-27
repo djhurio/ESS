@@ -2,6 +2,7 @@
 
 require(data.table)
 require(sampling)
+require(openxlsx)
 
 # Reset
 rm(list = ls())
@@ -86,3 +87,5 @@ tab.sim[, diff_total := abs(prob_total_sim - prob_total_true)]
 tab.sim
 
 fwrite(tab.sim, file = "tables/syst-sampl-sim.csv")
+
+write.xlsx(tab.sim, file = "tables/syst-sampl-sim.xlsx")

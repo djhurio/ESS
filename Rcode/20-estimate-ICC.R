@@ -5,7 +5,7 @@ options(encoding = "UTF-8")
 options(max.print = 10e3)
 options(datatable.integer64 = "character")
 options(datatable.keepLeadingZeros = TRUE)
-options(warn = 2)
+options(warn = 2) # Will stop on warning
 
 # Packages
 require(essurvey)
@@ -90,10 +90,14 @@ dat3[total_Z > 0, lin_val := (value_y - total_Y / total_Z * value_z) / total_Z]
 
 
 # PSU variance
-tab_psu <- dat3[, .(n = .N, sd_y_psu = sd(value_y)), keyby = .(varname_ext, PSU)]
+tab_psu <- dat3[!is.na(value), .(n = .N, sd_y_psu = sd(value_y)),
+                keyby = .(varname_ext, PSU)]
 tab_psu[n == 1L, sd_y_psu := 0]
 tab_psu <- tab_psu[, .(max_sd_y_psu = max(sd_y_psu)), keyby = .(varname_ext)]
 tab_psu[max_sd_y_psu == 0]
+
+tab_psu[("R5_LT_D1_emplno")]
+
 
 # Summary table
 tab_variables <- dat3[, .(n_resp = .N,
@@ -131,6 +135,7 @@ tab_variables[, flag := (b > 1) & (sd_y == 0 | total_Y == total_Z |
                 (n_resp - n_na) == 1L | max_sd_y_psu == 0)]
 tab_variables[, .N, keyby = .(flag)]
 
+tab_variables[("R5_LT_D1_emplno")]
 
 # Aggregate up to round and country
 tab_variables[, flag := any(flag), by = .(essround, cntry, varname)]
@@ -148,6 +153,8 @@ save(tab_variables, file = "data/tab_variables.Rdata")
 # List of extended variable names to be used in the ICC estimation
 varname_list <- tab_variables[(b > 1) & !(flag), varname_ext]
 length(varname_list)
+
+"R5_LT_D1_emplno" %in% varname_list
 
 
 # Estimate ICC ####
@@ -208,103 +215,167 @@ estimICC <- function(x) {
 }
 
 estimICC(sample(varname_list, 1))
+# estimICC("R5_LT_D1_emplno")
+
+dat3[("R5_LT_D1_emplno"), .N, keyby = .(value, value_y, value_z)]
+dat3[("R5_LT_D1_emplno")][!is.na(value), .N,
+                          keyby = .(PSU, value, value_y, value_z)]
 
 
-# ICC testing
-# The case of ESS8 CZ data
-
-# Load ICC estimates received from Peter
-ICC.est.test <- fread(file = "data/ESS8CZ/ESS8-CZ-ICC-Peter.txt", sep = " ",
-                      drop = c(1, 2, 6), blank.lines.skip = T, na.strings = ".")
-
-# x <- "R9_LV_D1_happy"
-
-estimICC_test <- function(x) {
-  cat("TEST:", x, "\n")
-
-  tab.anova <- anova(aov(value ~ PSU, data = dat3[(x)][!is.na(value)]))
-  MeanSq <- tab.anova$`Mean Sq`
-
-  psu.size  <- dat3[(x)][!is.na(value), .N, by = .(PSU)][, N]
-  psu.count <- length(psu.size)
-
-  var.a <- (MeanSq[1] - MeanSq[2]) /
-    ((1 / (psu.count - 1)) * (sum(psu.size) - (sum(psu.size ^ 2) / sum(psu.size))))
-
-  data.table(varname_ext = x,
-             ICC1 = max(0, ICC::ICCbare(x = factor(PSU),
-                                        y = value,
-                                        data = dat3[(x)][!is.na(value)])),
-             ICC2 = max(0, ICC::ICCbare(x = factor(PSU),
-                                        y = lin_val,
-                                        data = dat3[(x)])))
-}
-
-estimICC_test("R8_CZ_D1_aesfdrk")
-# 0.1403413
-
-estimICC_test(sample(varname_list, 1))
-
-ICC.est <- rbindlist(lapply(grep("R8_CZ", varname_list, value = T),
-                            estimICC_test))
-ICC.est
-
-ggplot(data = ICC.est, mapping = aes(ICC1, ICC2)) +
-  geom_point() +
-  geom_text(mapping = aes(label = substring(varname_ext, 10)),
-            hjust = 1, vjust = 0, colour = "grey") +
-  geom_abline(intercept = 0, slope = 1, colour = "red") +
-  ggtitle("ICC estimates for R8 CZ") +
-  theme_bw()
-
-dat3[("R8_CZ_D1_emplno"), .N, keyby = .(value, value_y, value_z)]
-
-dat_test <- merge(tab_variables[cntry == "CZ" & essround == 8], ICC.est,
-                  by = "varname_ext", all.x = T)
-dat_test <- merge(dat_test, ICC.est.test, by = c("cntry", "varname"), all.x = T)
-
-dat_test[, test1 := abs(ICC1 - roh) < 1e-6]
-dat_test[, test2 := abs(ICC2 - roh) < 1e-6]
-
-dat_test[, .N, keyby = .(flag, test1, test2)]
-
-dat_test[!(test1), .(varname_ext, n_na, ICC1, ICC2, roh)]
-
-dat_test[is.na(test1)]
-dat_test[!is.na(test1)][order(abs(diff))]
-
-dat_test[total_Z == pop_size][order(abs(ICC1 - roh))]
-
-
-# # Save
-# write.xlsx(dat_test, file = "results/ESS8_CZ_dat_deff.xlsx",
-#            colWidths = "auto", firstRow = T,
-#            headerStyle = createStyle(textDecoration = "italic",
-#                                      halign = "center"))
+# # ICC testing
+# # The case of ESS8 CZ data
+#
+# # Load ICC estimates received from Peter
+# ICC.est.test <- fread(file = "data/ESS8CZ/ESS8-CZ-ICC-Peter.txt", sep = " ",
+#                       drop = c(1, 2, 6), blank.lines.skip = T, na.strings = ".")
+#
+# # x <- "R9_LV_D1_happy"
+#
+# estimICC_test <- function(x) {
+#   cat("TEST:", x, "\n")
+#
+#   tab.anova <- anova(aov(value ~ PSU, data = dat3[(x)][!is.na(value)]))
+#   MeanSq <- tab.anova$`Mean Sq`
+#
+#   psu.size  <- dat3[(x)][!is.na(value), .N, by = .(PSU)][, N]
+#   psu.count <- length(psu.size)
+#
+#   var.a <- (MeanSq[1] - MeanSq[2]) /
+#     ((1 / (psu.count - 1)) * (sum(psu.size) - (sum(psu.size ^ 2) / sum(psu.size))))
+#
+#   data.table(varname_ext = x,
+#              ICC1 = max(0, ICC::ICCbare(x = factor(PSU),
+#                                         y = value,
+#                                         data = dat3[(x)][!is.na(value)])),
+#              ICC2 = max(0, ICC::ICCbare(x = factor(PSU),
+#                                         y = lin_val,
+#                                         data = dat3[(x)])))
+# }
+#
+# estimICC_test("R8_CZ_D1_aesfdrk")
+# # 0.1403413
+#
+# estimICC_test(sample(varname_list, 1))
+#
+# ICC.est <- rbindlist(lapply(grep("R8_CZ", varname_list, value = T),
+#                             estimICC_test))
+# ICC.est
+#
+# ggplot(data = ICC.est, mapping = aes(ICC1, ICC2)) +
+#   geom_point() +
+#   geom_text(mapping = aes(label = substring(varname_ext, 10)),
+#             hjust = 1, vjust = 0, colour = "grey") +
+#   geom_abline(intercept = 0, slope = 1, colour = "red") +
+#   ggtitle("ICC estimates for R8 CZ") +
+#   theme_bw()
+#
+# dat3[("R8_CZ_D1_emplno"), .N, keyby = .(value, value_y, value_z)]
+#
+# dat_test <- merge(tab_variables[cntry == "CZ" & essround == 8], ICC.est,
+#                   by = "varname_ext", all.x = T)
+# dat_test <- merge(dat_test, ICC.est.test, by = c("cntry", "varname"), all.x = T)
+#
+# dat_test[, test1 := abs(ICC1 - roh) < 1e-6]
+# dat_test[, test2 := abs(ICC2 - roh) < 1e-6]
+#
+# dat_test[, .N, keyby = .(flag, test1, test2)]
+#
+# dat_test[!(test1), .(varname_ext, n_na, ICC1, ICC2, roh)]
+#
+# dat_test[is.na(test1)]
+#
+# dat_test[total_Z == pop_size][order(abs(ICC1 - roh))]
+#
+#
+# # # Save
+# # write.xlsx(dat_test, file = "results/ESS8_CZ_dat_deff.xlsx",
+# #            colWidths = "auto", firstRow = T,
+# #            headerStyle = createStyle(textDecoration = "italic",
+# #                                      halign = "center"))
 
 
 
 # Real estimation for all rounds and countries
 gc()
 t1 <- Sys.time()
-dat_ICC <- lapply(varname_list[1:5], estimICC)
+dat_ICC <- lapply(varname_list, estimICC)
 t2 <- Sys.time()
 t2 - t1
 # Time difference of 42 mins
 
-# warnings()
+# Options
+options(warn = 1)
 
 dat_ICC[1:3]
 
 dat_ICC <- rbindlist(dat_ICC, use.names = T, fill = T)
+
+setkey(dat_ICC, varname_ext)
+
 save(dat_ICC, file = "data/dat_ICC.Rdata")
+
+
+# Load
 
 load("data/dat_ICC.Rdata")
 
 dat_ICC
-dat_ICC[, summary(ICC)]
-dat_ICC[is.na(ICC)]
+
+dat_ICC[, summary(ICC1)]
+dat_ICC[, summary(ICC2)]
+
+dat_ICC[is.na(ICC1)]
+dat_ICC[is.na(ICC2)]
 
 
-# Options
-options(warn = 1)
+dat_ICC[, essround := substring(varname_ext, 1, 2)]
+dat_ICC[, cntry    := substring(varname_ext, 4, 5)]
+dat_ICC[, domain   := substring(varname_ext, 7, 8)]
+dat_ICC[, varname  := substring(varname_ext, 10)]
+
+
+pl0 <- ggplot(data = dat_ICC, mapping = aes(x = ICC1, y = ICC2)) +
+  geom_point(alpha = .5) +
+  geom_abline(intercept = 0, slope = 1, colour = "red") +
+  ggtitle("Intraclass correlation coefficient (ICC or ρ)") +
+  theme_bw()
+
+pl1 <- ggplot(data = dat_ICC, mapping = aes(x = ICC1, y = ICC2)) +
+  geom_point(alpha = .5) +
+  geom_abline(intercept = 0, slope = 1, colour = "red") +
+  facet_wrap(~ essround) +
+  ggtitle("Intraclass correlation coefficient (ICC or ρ)") +
+  theme_bw()
+
+pl2 <- ggplot(data = dat_ICC, mapping = aes(x = ICC1, y = ICC2, colour = domain)) +
+  geom_point(alpha = .5) +
+  geom_abline(intercept = 0, slope = 1, colour = "red") +
+  facet_wrap(~ cntry) +
+  ggtitle("Intraclass correlation coefficient (ICC or ρ)") +
+  theme_bw()
+
+pl3 <- ggplot(data = dat_ICC, mapping = aes(x = ICC1, y = ICC2)) +
+  geom_point(alpha = .5) +
+  geom_abline(intercept = 0, slope = 1, colour = "red") +
+  facet_wrap(~ varname) +
+  ggtitle("Intraclass correlation coefficient (ICC or ρ)") +
+  theme_bw()
+
+cairo_pdf(filename = "results/ICC1_ICC2.pdf", width = 16, height = 9, onefile = T)
+pl0
+pl1
+pl2
+pl3
+dev.off()
+
+fwrite(x = dat_ICC, file = "results/ICC1_ICC2.csv")
+
+dat_ICC[("R9_PL_D2_emplno")]
+
+tab <- dat3[("R9_PL_D2_emplno"), .(n = .N),
+            keyby = .(varname_ext, lin_val, value, value_y, value_z)]
+tab[, p := prop.table(n)]
+tab
+
+dat3[("R9_PL_D2_emplno")][!is.na(value), .(n = .N),
+     keyby = .(varname_ext, PSU, lin_val, value, value_y, value_z)]

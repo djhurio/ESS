@@ -361,12 +361,27 @@ pl3 <- ggplot(data = dat_ICC, mapping = aes(x = ICC1, y = ICC2)) +
   ggtitle("Intraclass correlation coefficient (ICC or ρ)") +
   theme_bw()
 
+dat_ICC3 <- melt.data.table(data = dat_ICC,
+                            id.vars = c("varname_ext", "essround", "cntry",
+                                        "domain", "varname"),
+                            measure.vars = c("ICC1", "ICC2"))
+
+pl4 <- ggplot(data = dat_ICC3, mapping = aes(x = value, colour = variable)) +
+  geom_density() +
+  facet_wrap(~ varname, scales = "free") +
+  ggtitle("Density of intraclass correlation coefficient (ICC or ρ)") +
+  theme_bw()
+
 cairo_pdf(filename = "results/ICC1_ICC2.pdf", width = 16, height = 9, onefile = T)
 pl0
 pl1
 pl2
 pl3
+pl4
 dev.off()
+
+dat_ICC[, lapply(.SD, sd), .SDcols = c("ICC1", "ICC2"),
+        keyby = .(varname)][, .N, keyby = .(ICC1 > ICC2)]
 
 fwrite(x = dat_ICC, file = "results/ICC1_ICC2.csv")
 

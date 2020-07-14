@@ -27,7 +27,7 @@ data.main <- import_rounds(rounds = 9, ess_email = "martins.liberts+ess@gmail.co
 setDT(data.main, key = c("essround", "cntry", "idno"))
 
 data.main[, .N, keyby = .(essround, cntry, idno)]
-data.main <- data.main[, .(essround, cntry, idno, resp = T)]
+data.main <- data.main[, .(essround, cntry, idno, dweight, pweight, resp = T)]
 
 
 # Load domain variable (missing at the main survey data file)
@@ -166,6 +166,8 @@ length(varlist)
 
 data.cf <- data.cf[, ..varlist]
 
+rm(varlist)
+
 # lapply(data.cf, class)
 
 # DO IF (SYSMIS(RESULB1) = 1 or missing(RESULB1) = 1 or ANY(RESULB1,66,99)).
@@ -190,6 +192,8 @@ data.cf <- melt.data.table(data = data.cf,
                            id.vars = c("essround", "cntry", "idno",
                                        "numhh", "hhselect", "nhhmem",
                                        "outinval", "interva", "defectcf"))
+
+data.cf[, value := as.integer(value)]
 
 data.cf[, attempt := as.integer(sub("[a-z]*", "", variable))]
 
@@ -239,6 +243,7 @@ data.cf[, lapply(.SD, class)]
 varlist <- paste("ref", c("resp", "prox", "befs"), sep = "_")
 data.cf[, c(varlist) := lapply(2:4, function(x) sum(outn == x, na.rm = T)),
         by = .(essround, cntry, idno)]
+rm(varlist)
 
 # data.cf[idno %in% data.cf[ref_resp == max(ref_resp), idno]]
 # data.cf[idno %in% data.cf[ref_prox == max(ref_prox), idno]]
@@ -277,7 +282,7 @@ data.cf[, attempt_last := NULL]
 # END IF.
 # EXECUTE.
 
-data.cf[ref_resp >= 1L,              ref := 1L]
+data.cf[             ref_resp >= 1L, ref := 1L]
 data.cf[is.na(ref) & ref_prox >= 1L, ref := 2L]
 data.cf[is.na(ref) & ref_befs >= 1L, ref := 3L]
 data.cf[is.na(ref),                  ref := 0L]
@@ -548,8 +553,11 @@ tab.cf
 # deff_p according to nhhmem
 data.cf[(resp), .N, keyby = .(nhhmem)]
 
+data.cf[, weight_des := dweight * pweight * 10e3]
+
 tab.deff_p_nhhmem <- data.cf[(resp),
-                             .(deff_p_nhhmem = .N * sum(nhhmem ^ 2) / sum(nhhmem) ^ 2),
+                             .(deff_p = .N * sum(weight_des ^ 2) / sum(weight_des) ^ 2,
+                               deff_p_nhhmem = .N * sum(nhhmem ^ 2) / sum(nhhmem) ^ 2),
                              keyby = .(essround, cntry, domain)]
 
 tab.deff_p_nhhmem <- tab.deff_p_nhhmem[!is.na(deff_p_nhhmem)]

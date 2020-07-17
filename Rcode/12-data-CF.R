@@ -31,10 +31,13 @@ data.main <- data.main[, .(essround, cntry, idno, dweight, pweight, resp = T)]
 
 
 # Load domain variable (missing at the main survey data file)
-data.domain <- read_stata("data/R9/ess9_domain.dta")
-setDT(data.domain, key = c("essround", "cntry", "idno"))
+data.domain <- read_stata("data/R9/ess9_domain_all.dta")
+setDT(data.domain)
 
-data.domain <- data.domain[, .(essround, cntry, idno, domain)]
+data.domain <- data.domain[, .(essround = 9, cntry, idno = idno_scrambled, domain)]
+setkey(data.domain, essround, cntry, idno)
+
+anyDuplicated(data.domain, by = key(data.domain))
 
 data.domain[, .N, keyby = .(domain)]
 data.domain[domain == "", domain := "1"]
@@ -45,7 +48,27 @@ data.domain[, .N, keyby = .(domain)]
 data.cf <- read_spss("data/CF/ESS9CFe02.sav")
 setDT(data.cf, key = c("essround", "cntry", "idno"))
 
+data.cf <- zap_labels(data.cf)
+
 data.cf[, .N]
+
+sapply(data.cf[, .(essround, cntry, idno, file.cf = T)], class)
+sapply(data.domain[, .(essround, cntry, idno, file.cf = T)], class)
+
+data.test <- merge(data.cf[, .(essround, cntry, idno, file.cf = T)],
+                   data.domain[, .(essround, cntry, idno, file.domain = T)],
+                   by = c("essround", "cntry", "idno"),
+                   all = T)
+
+data.test[is.na(file.cf), file.cf := F]
+data.test[is.na(file.domain), file.domain := F]
+
+data.test[, .N, keyby = .(file.cf, file.domain)]
+data.test[!file.cf | !file.domain]
+
+data.cf[1:10, .(essround, cntry, idno)]
+data.domain[1:10, .(essround, cntry, idno)]
+
 
 
 # Contact forms ####
@@ -522,6 +545,12 @@ data.cf[, .N, keyby = .(finalcode, codents)]
 # OUTCOME=2 otherwise
 
 data.cf <- merge(data.cf, data.domain, by = c("essround", "cntry", "idno"), all.x = T)
+
+data.cf[, .N, keyby = .(domain)]
+data.cf[is.na(domain), .N, keyby = .(essround, cntry)]
+data.cf[is.na(domain), domain := "1"]
+data.cf[, .N, keyby = .(domain)]
+
 data.cf <- merge(data.cf, data.main,   by = c("essround", "cntry", "idno"), all.x = T)
 
 data.cf[, .N, keyby = .(resp)]
@@ -539,15 +568,30 @@ data.cf[finalcode == 10, .N, keyby = .(outcome)]
 
 
 # Sample size, ri, and rr
-tab.cf <- data.cf[, .(n_gross = .N,
-                      n_net = sum(resp),
-                      n_ineligibles = sum(outcome == 3)),
-                  keyby = .(essround, cntry)]
+tab.cf.cntry <- data.cf[, .(n_gross = .N,
+                            n_net = sum(resp),
+                            n_ineligibles = sum(outcome == 3)),
+                        keyby = .(essround, cntry)]
+
+tab.cf.domain <- data.cf[, .(n_gross = .N,
+                             n_net = sum(resp),
+                             n_ineligibles = sum(outcome == 3)),
+                         keyby = .(essround, cntry, domain)]
+
+tab.cf.domain[, n.domains := .N, by = .(essround, cntry)]
+tab.cf.domain[n.domains > 1]
+
+tab.cf <- rbindlist(list(tab.cf.domain[n.domains > 1], tab.cf.cntry),
+                    use.names = T, fill = T)
+tab.cf[, n.domains := NULL]
+
+setorder(tab.cf, essround, cntry, domain)
 
 tab.cf[, ri := n_ineligibles / n_gross]
 tab.cf[, rr := n_net / (n_gross - n_ineligibles)]
 
 tab.cf
+tab.cf[essround == 9 & cntry == "LT"]
 
 
 # deff_p according to nhhmem

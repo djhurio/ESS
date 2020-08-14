@@ -206,12 +206,12 @@ setkey(dat3, varname_ext, PSU)
 estimICC <- function(x) {
   cat(which(x == varname_list), "/", length(varname_list), ":", x, "\n")
   data.table(varname_ext = x,
-             ICC1 = max(0, ICC::ICCbare(x = factor(PSU),
-                                        y = value,
-                                        data = dat3[(x)][!is.na(value)])),
-             ICC2 = max(0, ICC::ICCbare(x = factor(PSU),
-                                        y = lin_val,
-                                        data = dat3[(x)])))
+             # ICC1 = max(0, ICC::ICCbare(x = factor(PSU),
+             #                            y = value,
+             #                            data = dat3[(x)][!is.na(value)])),
+             ICC = max(0, ICC::ICCbare(x = factor(PSU),
+                                       y = lin_val,
+                                       data = dat3[(x)])))
 }
 
 estimICC(sample(varname_list, 1))
@@ -301,7 +301,7 @@ t1 <- Sys.time()
 dat_ICC <- lapply(varname_list, estimICC)
 t2 <- Sys.time()
 t2 - t1
-# Time difference of 42 mins
+# Time difference of 38.32429 mins
 
 # Options
 options(warn = 1)
@@ -321,11 +321,9 @@ load("data/dat_ICC.Rdata")
 
 dat_ICC
 
-dat_ICC[, summary(ICC1)]
-dat_ICC[, summary(ICC2)]
+dat_ICC[, summary(ICC)]
 
-dat_ICC[is.na(ICC1)]
-dat_ICC[is.na(ICC2)]
+dat_ICC[is.na(ICC)]
 
 
 dat_ICC[, essround := substring(varname_ext, 1, 2)]
@@ -334,56 +332,56 @@ dat_ICC[, domain   := substring(varname_ext, 7, 8)]
 dat_ICC[, varname  := substring(varname_ext, 10)]
 
 
-pl0 <- ggplot(data = dat_ICC, mapping = aes(x = ICC1, y = ICC2)) +
-  geom_point(alpha = .5) +
-  geom_abline(intercept = 0, slope = 1, colour = "red") +
-  ggtitle("Intraclass correlation coefficient (ICC or ρ)") +
-  theme_bw()
-
-pl1 <- ggplot(data = dat_ICC, mapping = aes(x = ICC1, y = ICC2)) +
-  geom_point(alpha = .5) +
-  geom_abline(intercept = 0, slope = 1, colour = "red") +
-  facet_wrap(~ essround) +
-  ggtitle("Intraclass correlation coefficient (ICC or ρ)") +
-  theme_bw()
-
-pl2 <- ggplot(data = dat_ICC, mapping = aes(x = ICC1, y = ICC2, colour = domain)) +
-  geom_point(alpha = .5) +
-  geom_abline(intercept = 0, slope = 1, colour = "red") +
-  facet_wrap(~ cntry) +
-  ggtitle("Intraclass correlation coefficient (ICC or ρ)") +
-  theme_bw()
-
-pl3 <- ggplot(data = dat_ICC, mapping = aes(x = ICC1, y = ICC2)) +
-  geom_point(alpha = .5) +
-  geom_abline(intercept = 0, slope = 1, colour = "red") +
-  facet_wrap(~ varname) +
-  ggtitle("Intraclass correlation coefficient (ICC or ρ)") +
-  theme_bw()
-
-dat_ICC3 <- melt.data.table(data = dat_ICC,
-                            id.vars = c("varname_ext", "essround", "cntry",
-                                        "domain", "varname"),
-                            measure.vars = c("ICC1", "ICC2"))
-
-pl4 <- ggplot(data = dat_ICC3, mapping = aes(x = value, colour = variable)) +
-  geom_density() +
-  facet_wrap(~ varname, scales = "free") +
-  ggtitle("Density of intraclass correlation coefficient (ICC or ρ)") +
-  theme_bw()
-
-cairo_pdf(filename = "results/ICC1_ICC2.pdf", width = 16, height = 9, onefile = T)
-pl0
-pl1
-pl2
-pl3
-pl4
-dev.off()
-
-dat_ICC[, lapply(.SD, sd), .SDcols = c("ICC1", "ICC2"),
-        keyby = .(varname)][, .N, keyby = .(ICC1 > ICC2)]
-
-fwrite(x = dat_ICC, file = "results/ICC1_ICC2.csv")
+# pl0 <- ggplot(data = dat_ICC, mapping = aes(x = ICC1, y = ICC2)) +
+#   geom_point(alpha = .5) +
+#   geom_abline(intercept = 0, slope = 1, colour = "red") +
+#   ggtitle("Intraclass correlation coefficient (ICC or ρ)") +
+#   theme_bw()
+#
+# pl1 <- ggplot(data = dat_ICC, mapping = aes(x = ICC1, y = ICC2)) +
+#   geom_point(alpha = .5) +
+#   geom_abline(intercept = 0, slope = 1, colour = "red") +
+#   facet_wrap(~ essround) +
+#   ggtitle("Intraclass correlation coefficient (ICC or ρ)") +
+#   theme_bw()
+#
+# pl2 <- ggplot(data = dat_ICC, mapping = aes(x = ICC1, y = ICC2, colour = domain)) +
+#   geom_point(alpha = .5) +
+#   geom_abline(intercept = 0, slope = 1, colour = "red") +
+#   facet_wrap(~ cntry) +
+#   ggtitle("Intraclass correlation coefficient (ICC or ρ)") +
+#   theme_bw()
+#
+# pl3 <- ggplot(data = dat_ICC, mapping = aes(x = ICC1, y = ICC2)) +
+#   geom_point(alpha = .5) +
+#   geom_abline(intercept = 0, slope = 1, colour = "red") +
+#   facet_wrap(~ varname) +
+#   ggtitle("Intraclass correlation coefficient (ICC or ρ)") +
+#   theme_bw()
+#
+# dat_ICC3 <- melt.data.table(data = dat_ICC,
+#                             id.vars = c("varname_ext", "essround", "cntry",
+#                                         "domain", "varname"),
+#                             measure.vars = c("ICC1", "ICC2"))
+#
+# pl4 <- ggplot(data = dat_ICC3, mapping = aes(x = value, colour = variable)) +
+#   geom_density() +
+#   facet_wrap(~ varname, scales = "free") +
+#   ggtitle("Density of intraclass correlation coefficient (ICC or ρ)") +
+#   theme_bw()
+#
+# cairo_pdf(filename = "results/ICC1_ICC2.pdf", width = 16, height = 9, onefile = T)
+# pl0
+# pl1
+# pl2
+# pl3
+# pl4
+# dev.off()
+#
+# dat_ICC[, lapply(.SD, sd), .SDcols = c("ICC1", "ICC2"),
+#         keyby = .(varname)][, .N, keyby = .(ICC1 > ICC2)]
+#
+# fwrite(x = dat_ICC, file = "results/ICC1_ICC2.csv")
 
 dat_ICC[("R9_PL_D2_emplno")]
 
@@ -394,3 +392,5 @@ tab
 
 dat3[("R9_PL_D2_emplno")][!is.na(value), .(n = .N),
      keyby = .(varname_ext, PSU, lin_val, value, value_y, value_z)]
+
+save(dat3, file = "~/data/dat3.Rdata")

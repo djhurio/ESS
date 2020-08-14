@@ -11,18 +11,50 @@ options(datatable.keepLeadingZeros = TRUE)
 # Packages
 require(data.table)
 require(openxlsx)
+require(ggplot2)
 
 
 # Reset
 rm(list = ls())
 gc()
 
-set_email("martins.liberts+ess@gmail.com")
 
 # Load data
 load("data/dat2.Rdata")
 load("data/tab_variables.Rdata")
 load("data/dat_ICC.Rdata")
+
+
+
+# Test ICC estimation
+tab_variables[essround == 9, .N, keyby = .(essround, cntry, domain, flag)]
+
+dcast.data.table(data = tab_variables[essround == 9],
+                 formula = essround + cntry + domain ~ flag,
+                 fun.aggregate = length)[order(`FALSE`)]
+
+
+x <- tab_variables[b > 1 & essround == 9 & (flag) & cntry %in% c("HU", "PL"),
+                   .(essround, cntry, domain, varname)]
+
+foo <- function(i) {
+  tab <- dat2[essround == x[i, essround] &
+                cntry == x[i, cntry] & domain == x[i, domain],
+              .N, keyby = c("essround", "cntry", "domain", x[i, varname])]
+  tab[, varname := x[i, varname]]
+  setnames(tab, x[i, varname], "value")
+  setcolorder(tab, c("essround", "cntry", "domain", "varname", "value"))
+  tab
+}
+
+foo(1)
+
+rbindlist(lapply(x[, .I], foo))
+
+dat2[essround == 9 & cntry == "PL" & domain == 1, .N, keyby = .(crpdwk)]
+dat2[essround == 9 & cntry == "PL" & domain == 2, .N, keyby = .(crpdwk)]
+
+
 
 
 # Label rounds
@@ -255,28 +287,28 @@ pl_neff <- ggplot(tab_deff_2) +
   facet_wrap(~ cntry)
 
 
-# Aggregate to round
-tab_deff_3 <- tab_deff_2[, c(.(n_cntries = .N), lapply(.SD, sum)),
-                         .SDcols = c("n_domains", "n_resp", "pop_size",
-                                     "n_eff", "min_n_eff"),
-                         keyby = .(essround)]
-
-# Aggregated dessign effect
-tab_deff_3[, deff := n_resp / n_eff]
-
-# Evaluation
-tab_deff_3[, assessment := (n_eff >= min_n_eff)]
-
-pl_deff_ess <- ggplot(tab_deff_3) +
-  geom_col(aes(x = essround, y = deff, fill = essround),
-           colour = "black", position = "dodge") +
-  ggtitle("ESS total design effect (deff)")
-
-pl_neff_ess <- ggplot(tab_deff_3) +
-  geom_col(aes(x = essround, y = n_eff, fill = essround),
-           colour = "black", position = "dodge") +
-  geom_hline(mapping = aes(yintercept = min_n_eff, colour = essround)) +
-  ggtitle("ESS total effective sample size (n_eff)")
+# # Aggregate to round
+# tab_deff_3 <- tab_deff_2[, c(.(n_cntries = .N), lapply(.SD, sum)),
+#                          .SDcols = c("n_domains", "n_resp", "pop_size",
+#                                      "n_eff", "min_n_eff"),
+#                          keyby = .(essround)]
+#
+# # Aggregated dessign effect
+# tab_deff_3[, deff := n_resp / n_eff]
+#
+# # Evaluation
+# tab_deff_3[, assessment := (n_eff >= min_n_eff)]
+#
+# pl_deff_ess <- ggplot(tab_deff_3) +
+#   geom_col(aes(x = essround, y = deff, fill = essround),
+#            colour = "black", position = "dodge") +
+#   ggtitle("ESS total design effect (deff)")
+#
+# pl_neff_ess <- ggplot(tab_deff_3) +
+#   geom_col(aes(x = essround, y = n_eff, fill = essround),
+#            colour = "black", position = "dodge") +
+#   geom_hline(mapping = aes(yintercept = min_n_eff, colour = essround)) +
+#   ggtitle("ESS total effective sample size (n_eff)")
 
 
 tab_deff_2[, sapply(.SD, class)]
@@ -312,8 +344,7 @@ length(cntry_list)
 
 # Save for all countries ###
 
-write.xlsx(list("deff_ess" = tab_deff_3,
-                "deff_cntry" = tab_deff_2,
+write.xlsx(list("deff_cntry" = tab_deff_2,
                 "deff_cntry_domain" = tab_deff,
                 "deff_cntry_domain_variable" = dat_deff,
                 "deff_cntry_domain_variable_all" = tab_variables),
@@ -360,3 +391,11 @@ for (i in cntry_list) {
   cat(i, ": ")
   export_cntry_results(i)
 }
+
+# list.files(path = "results/cntry", full.names = T)
+
+fname <- "results/ESS-cntry-results-R9.zip"
+if (file.exists(fname)) file.remove(fname)
+zip::zip(zipfile = fname,
+         files = list.files(path = "results/cntry", full.names = T),
+         mode = "cherry-pick")

@@ -41,7 +41,7 @@ dat <- mclapply(show_countries(), function(cntry) {
 }, mc.silent = F, mc.cores = 4)
 t2 <- Sys.time()
 t2 - t1
-# Time difference of 5.753322 mins
+# Time difference of 5.098674 mins
 
 dat <- unlist(dat, recursive = F)
 

@@ -81,8 +81,7 @@ dat <- dat[, c(varnames.design,
 
 dim(dat)
 
-
-
+dat[, .N, keyby = .(essround, proddate)]
 
 # Test
 dat[, .N]

@@ -566,6 +566,10 @@ data.cf[, .N, keyby = .(outcome, codents)]
 
 data.cf[finalcode == 10, .N, keyby = .(outcome)]
 
+data.cf[cntry == "LT", .N, keyby = .(essround, cntry, codents, outcome)]
+
+tab.codents <- data.cf[, .N, keyby = .(essround, cntry, codents, outcome)]
+
 
 # Sample size, ri, and rr
 tab.cf.cntry <- data.cf[, .(n_gross = .N,
@@ -616,3 +620,6 @@ write.xlsx(tab.cf, file = "tables/ESS9-sample-size-rr-ri.xlsx")
 
 fwrite(    tab.deff_p_nhhmem, file = "tables/ESS9-tab.deff_p_nhhmem.csv")
 write.xlsx(tab.deff_p_nhhmem, file = "tables/ESS9-tab.deff_p_nhhmem.xlsx")
+
+fwrite(    tab.codents, file = "tables/ESS9-tab.codents.csv")
+write.xlsx(tab.codents, file = "tables/ESS9-tab.codents.xlsx")

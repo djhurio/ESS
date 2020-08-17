@@ -1,0 +1,360 @@
+essround,cntry,codents,outcome,N
+9,AT,B: Refusal by respondent,2,1336
+9,AT,C: Refusal by proxy or before selection,2,863
+9,AT,E: Noncontact or moved to unknown destination or still in country,2,144
+9,AT,F: Language barrier,2,54
+9,AT,G: Mentally / physically unable / ill / sick (short and long term),2,17
+9,AT,I: Address not traceable,2,2
+9,AT,J: Address not residential,3,8
+9,AT,"K: Derelict or demolished house, not yet build or not occupied",3,27
+9,AT,L: Other ineligible,3,6
+9,AT,X: (partial) Interview,1,2499
+9,BE,B: Refusal by respondent,2,741
+9,BE,C: Refusal by proxy or before selection,2,66
+9,BE,E: Noncontact or moved to unknown destination or still in country,2,189
+9,BE,F: Language barrier,2,104
+9,BE,G: Mentally / physically unable / ill / sick (short and long term),2,124
+9,BE,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,54
+9,BE,I: Address not traceable,2,14
+9,BE,J: Address not residential,3,12
+9,BE,"K: Derelict or demolished house, not yet build or not occupied",3,19
+9,BE,L: Other ineligible,3,17
+9,BE,M: R moved out of the country,3,50
+9,BE,N: R deceased,3,9
+9,BE,W: Invalid interview,2,38
+9,BE,X: (partial) Interview,1,1767
+9,BG,B: Refusal by respondent,2,146
+9,BG,C: Refusal by proxy or before selection,2,183
+9,BG,E: Noncontact or moved to unknown destination or still in country,2,586
+9,BG,F: Language barrier,2,3
+9,BG,G: Mentally / physically unable / ill / sick (short and long term),2,15
+9,BG,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,29
+9,BG,I: Address not traceable,2,7
+9,BG,J: Address not residential,3,2
+9,BG,"K: Derelict or demolished house, not yet build or not occupied",3,80
+9,BG,L: Other ineligible,3,1
+9,BG,M: R moved out of the country,3,49
+9,BG,N: R deceased,3,16
+9,BG,Undefined,2,12
+9,BG,W: Invalid interview,2,3
+9,BG,X: (partial) Interview,1,2198
+9,CH,B: Refusal by respondent,2,614
+9,CH,C: Refusal by proxy or before selection,2,153
+9,CH,E: Noncontact or moved to unknown destination or still in country,2,376
+9,CH,F: Language barrier,2,103
+9,CH,G: Mentally / physically unable / ill / sick (short and long term),2,103
+9,CH,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,80
+9,CH,J: Address not residential,3,5
+9,CH,M: R moved out of the country,3,22
+9,CH,N: R deceased,3,14
+9,CH,W: Invalid interview,2,3
+9,CH,X: (partial) Interview,1,1542
+9,CY,B: Refusal by respondent,2,189
+9,CY,C: Refusal by proxy or before selection,2,93
+9,CY,E: Noncontact or moved to unknown destination or still in country,2,140
+9,CY,F: Language barrier,2,165
+9,CY,G: Mentally / physically unable / ill / sick (short and long term),2,34
+9,CY,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,13
+9,CY,I: Address not traceable,2,43
+9,CY,J: Address not residential,3,36
+9,CY,"K: Derelict or demolished house, not yet build or not occupied",3,90
+9,CY,L: Other ineligible,3,4
+9,CY,M: R moved out of the country,3,3
+9,CY,N: R deceased,3,1
+9,CY,Undefined,1,4
+9,CY,Undefined,2,7
+9,CY,X: (partial) Interview,1,777
+9,CZ,B: Refusal by respondent,2,212
+9,CZ,C: Refusal by proxy or before selection,2,897
+9,CZ,E: Noncontact or moved to unknown destination or still in country,2,42
+9,CZ,G: Mentally / physically unable / ill / sick (short and long term),2,2
+9,CZ,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,7
+9,CZ,J: Address not residential,3,3
+9,CZ,M: R moved out of the country,3,1
+9,CZ,W: Invalid interview,2,2
+9,CZ,X: (partial) Interview,1,2398
+9,DE,-: Contact form missing,2,5
+9,DE,B: Refusal by respondent,2,4027
+9,DE,C: Refusal by proxy or before selection,2,275
+9,DE,E: Noncontact or moved to unknown destination or still in country,2,1027
+9,DE,F: Language barrier,2,213
+9,DE,G: Mentally / physically unable / ill / sick (short and long term),2,334
+9,DE,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,282
+9,DE,J: Address not residential,3,44
+9,DE,"K: Derelict or demolished house, not yet build or not occupied",3,19
+9,DE,M: R moved out of the country,3,34
+9,DE,N: R deceased,3,46
+9,DE,Undefined,1,2
+9,DE,W: Invalid interview,2,21
+9,DE,X: (partial) Interview,1,2356
+9,DE,X: (partial) Interview,2,10
+9,EE,-: Contact form missing,2,13
+9,EE,B: Refusal by respondent,2,621
+9,EE,C: Refusal by proxy or before selection,2,25
+9,EE,D: Refusal because of drop out list,2,150
+9,EE,E: Noncontact or moved to unknown destination or still in country,2,213
+9,EE,F: Language barrier,2,11
+9,EE,G: Mentally / physically unable / ill / sick (short and long term),2,32
+9,EE,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,52
+9,EE,L: Other ineligible,3,3
+9,EE,M: R moved out of the country,3,6
+9,EE,N: R deceased,3,34
+9,EE,Undefined,2,29
+9,EE,W: Invalid interview,2,7
+9,EE,X: (partial) Interview,1,1904
+9,ES,B: Refusal by respondent,2,465
+9,ES,C: Refusal by proxy or before selection,2,155
+9,ES,E: Noncontact or moved to unknown destination or still in country,2,579
+9,ES,F: Language barrier,2,30
+9,ES,G: Mentally / physically unable / ill / sick (short and long term),2,73
+9,ES,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,93
+9,ES,I: Address not traceable,2,35
+9,ES,J: Address not residential,3,13
+9,ES,"K: Derelict or demolished house, not yet build or not occupied",3,32
+9,ES,L: Other ineligible,3,6
+9,ES,M: R moved out of the country,3,57
+9,ES,N: R deceased,3,42
+9,ES,X: (partial) Interview,1,1668
+9,FI,B: Refusal by respondent,2,634
+9,FI,C: Refusal by proxy or before selection,2,36
+9,FI,E: Noncontact or moved to unknown destination or still in country,2,476
+9,FI,F: Language barrier,2,36
+9,FI,G: Mentally / physically unable / ill / sick (short and long term),2,51
+9,FI,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,386
+9,FI,I: Address not traceable,2,1
+9,FI,M: R moved out of the country,3,10
+9,FI,N: R deceased,3,2
+9,FI,Undefined,2,13
+9,FI,X: (partial) Interview,1,1755
+9,FR,-: Contact form missing,2,11
+9,FR,B: Refusal by respondent,2,173
+9,FR,C: Refusal by proxy or before selection,2,769
+9,FR,D: Refusal because of drop out list,2,1
+9,FR,E: Noncontact or moved to unknown destination or still in country,2,645
+9,FR,F: Language barrier,2,71
+9,FR,G: Mentally / physically unable / ill / sick (short and long term),2,272
+9,FR,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,118
+9,FR,I: Address not traceable,2,109
+9,FR,J: Address not residential,3,23
+9,FR,"K: Derelict or demolished house, not yet build or not occupied",3,198
+9,FR,X: (partial) Interview,1,2010
+9,GB,-: Contact form missing,1,3
+9,GB,-: Contact form missing,2,33
+9,GB,B: Refusal by respondent,2,1133
+9,GB,C: Refusal by proxy or before selection,2,836
+9,GB,E: Noncontact or moved to unknown destination or still in country,2,700
+9,GB,F: Language barrier,2,68
+9,GB,G: Mentally / physically unable / ill / sick (short and long term),2,148
+9,GB,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,242
+9,GB,I: Address not traceable,2,5
+9,GB,J: Address not residential,3,65
+9,GB,"K: Derelict or demolished house, not yet build or not occupied",3,347
+9,GB,L: Other ineligible,3,54
+9,GB,Undefined,2,15
+9,GB,X: (partial) Interview,1,2201
+9,HR,B: Refusal by respondent,2,27
+9,HR,C: Refusal by proxy or before selection,2,1771
+9,HR,E: Noncontact or moved to unknown destination or still in country,2,219
+9,HR,G: Mentally / physically unable / ill / sick (short and long term),2,24
+9,HR,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,26
+9,HR,I: Address not traceable,2,305
+9,HR,J: Address not residential,3,40
+9,HR,"K: Derelict or demolished house, not yet build or not occupied",3,188
+9,HR,L: Other ineligible,3,10
+9,HR,M: R moved out of the country,3,46
+9,HR,W: Invalid interview,2,4
+9,HR,X: (partial) Interview,1,1810
+9,HU,-: Contact form missing,2,6
+9,HU,B: Refusal by respondent,2,1575
+9,HU,C: Refusal by proxy or before selection,2,166
+9,HU,E: Noncontact or moved to unknown destination or still in country,2,291
+9,HU,F: Language barrier,2,33
+9,HU,G: Mentally / physically unable / ill / sick (short and long term),2,51
+9,HU,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,245
+9,HU,I: Address not traceable,2,26
+9,HU,J: Address not residential,3,6
+9,HU,"K: Derelict or demolished house, not yet build or not occupied",3,34
+9,HU,L: Other ineligible,3,7
+9,HU,M: R moved out of the country,3,122
+9,HU,N: R deceased,3,30
+9,HU,W: Invalid interview,2,110
+9,HU,X: (partial) Interview,1,1661
+9,IE,B: Refusal by respondent,2,563
+9,IE,C: Refusal by proxy or before selection,2,264
+9,IE,E: Noncontact or moved to unknown destination or still in country,2,336
+9,IE,F: Language barrier,2,31
+9,IE,G: Mentally / physically unable / ill / sick (short and long term),2,39
+9,IE,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,122
+9,IE,I: Address not traceable,2,5
+9,IE,J: Address not residential,3,23
+9,IE,"K: Derelict or demolished house, not yet build or not occupied",3,154
+9,IE,L: Other ineligible,3,11
+9,IE,N: R deceased,3,3
+9,IE,W: Invalid interview,2,1
+9,IE,X: (partial) Interview,1,2216
+9,IT,B: Refusal by respondent,2,1158
+9,IT,C: Refusal by proxy or before selection,2,241
+9,IT,E: Noncontact or moved to unknown destination or still in country,2,848
+9,IT,F: Language barrier,2,17
+9,IT,G: Mentally / physically unable / ill / sick (short and long term),2,73
+9,IT,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,109
+9,IT,I: Address not traceable,2,72
+9,IT,J: Address not residential,3,17
+9,IT,"K: Derelict or demolished house, not yet build or not occupied",3,58
+9,IT,L: Other ineligible,3,18
+9,IT,M: R moved out of the country,3,82
+9,IT,N: R deceased,3,55
+9,IT,Undefined,2,4
+9,IT,X: (partial) Interview,1,2745
+9,LT,B: Refusal by respondent,2,36
+9,LT,C: Refusal by proxy or before selection,2,912
+9,LT,E: Noncontact or moved to unknown destination or still in country,2,243
+9,LT,F: Language barrier,2,4
+9,LT,G: Mentally / physically unable / ill / sick (short and long term),2,12
+9,LT,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,3
+9,LT,J: Address not residential,3,331
+9,LT,"K: Derelict or demolished house, not yet build or not occupied",3,466
+9,LT,L: Other ineligible,3,294
+9,LT,W: Invalid interview,2,51
+9,LT,X: (partial) Interview,1,1835
+9,LT,X: (partial) Interview,2,3
+9,LV,B: Refusal by respondent,2,377
+9,LV,C: Refusal by proxy or before selection,2,319
+9,LV,E: Noncontact or moved to unknown destination or still in country,2,637
+9,LV,F: Language barrier,2,8
+9,LV,G: Mentally / physically unable / ill / sick (short and long term),2,25
+9,LV,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,58
+9,LV,I: Address not traceable,2,14
+9,LV,J: Address not residential,3,17
+9,LV,"K: Derelict or demolished house, not yet build or not occupied",3,117
+9,LV,L: Other ineligible,3,11
+9,LV,M: R moved out of the country,3,12
+9,LV,N: R deceased,3,7
+9,LV,W: Invalid interview,2,1
+9,LV,X: (partial) Interview,1,918
+9,LV,X: (partial) Interview,2,4
+9,ME,B: Refusal by respondent,2,50
+9,ME,C: Refusal by proxy or before selection,2,19
+9,ME,D: Refusal because of drop out list,2,328
+9,ME,E: Noncontact or moved to unknown destination or still in country,2,200
+9,ME,F: Language barrier,2,1
+9,ME,G: Mentally / physically unable / ill / sick (short and long term),2,3
+9,ME,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,6
+9,ME,I: Address not traceable,2,36
+9,ME,"K: Derelict or demolished house, not yet build or not occupied",3,9
+9,ME,L: Other ineligible,3,2
+9,ME,M: R moved out of the country,3,60
+9,ME,N: R deceased,3,15
+9,ME,Undefined,2,3
+9,ME,W: Invalid interview,2,79
+9,ME,X: (partial) Interview,1,1200
+9,ME,X: (partial) Interview,2,5
+9,NL,B: Refusal by respondent,2,1106
+9,NL,C: Refusal by proxy or before selection,2,156
+9,NL,E: Noncontact or moved to unknown destination or still in country,2,194
+9,NL,F: Language barrier,2,91
+9,NL,G: Mentally / physically unable / ill / sick (short and long term),2,120
+9,NL,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,21
+9,NL,I: Address not traceable,2,4
+9,NL,J: Address not residential,3,13
+9,NL,"K: Derelict or demolished house, not yet build or not occupied",3,21
+9,NL,L: Other ineligible,3,13
+9,NL,M: R moved out of the country,3,32
+9,NL,N: R deceased,3,15
+9,NL,X: (partial) Interview,1,1673
+9,NL,X: (partial) Interview,2,4
+9,NO,B: Refusal by respondent,2,1097
+9,NO,C: Refusal by proxy or before selection,2,50
+9,NO,E: Noncontact or moved to unknown destination or still in country,2,156
+9,NO,F: Language barrier,2,111
+9,NO,G: Mentally / physically unable / ill / sick (short and long term),2,125
+9,NO,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,294
+9,NO,N: R deceased,3,15
+9,NO,Undefined,1,4
+9,NO,Undefined,2,45
+9,NO,X: (partial) Interview,1,1402
+9,NO,X: (partial) Interview,2,1
+9,PL,B: Refusal by respondent,2,489
+9,PL,C: Refusal by proxy or before selection,2,75
+9,PL,E: Noncontact or moved to unknown destination or still in country,2,301
+9,PL,F: Language barrier,2,1
+9,PL,G: Mentally / physically unable / ill / sick (short and long term),2,54
+9,PL,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,40
+9,PL,I: Address not traceable,2,2
+9,PL,J: Address not residential,3,7
+9,PL,"K: Derelict or demolished house, not yet build or not occupied",3,12
+9,PL,M: R moved out of the country,3,198
+9,PL,N: R deceased,3,16
+9,PL,W: Invalid interview,2,5
+9,PL,X: (partial) Interview,1,1500
+9,PT,B: Refusal by respondent,2,232
+9,PT,C: Refusal by proxy or before selection,2,647
+9,PT,E: Noncontact or moved to unknown destination or still in country,2,287
+9,PT,F: Language barrier,2,25
+9,PT,G: Mentally / physically unable / ill / sick (short and long term),2,90
+9,PT,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,264
+9,PT,I: Address not traceable,2,387
+9,PT,J: Address not residential,3,95
+9,PT,"K: Derelict or demolished house, not yet build or not occupied",3,418
+9,PT,L: Other ineligible,3,63
+9,PT,M: R moved out of the country,3,16
+9,PT,N: R deceased,3,6
+9,PT,W: Invalid interview,2,19
+9,PT,X: (partial) Interview,1,1055
+9,PT,X: (partial) Interview,2,13
+9,RS,-: Contact form missing,1,59
+9,RS,-: Contact form missing,2,63
+9,RS,B: Refusal by respondent,2,389
+9,RS,C: Refusal by proxy or before selection,2,496
+9,RS,E: Noncontact or moved to unknown destination or still in country,2,309
+9,RS,F: Language barrier,2,7
+9,RS,G: Mentally / physically unable / ill / sick (short and long term),2,48
+9,RS,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,93
+9,RS,I: Address not traceable,2,14
+9,RS,J: Address not residential,3,3
+9,RS,"K: Derelict or demolished house, not yet build or not occupied",3,11
+9,RS,M: R moved out of the country,3,17
+9,RS,N: R deceased,3,23
+9,RS,Undefined,1,2
+9,RS,Undefined,2,11
+9,RS,W: Invalid interview,2,74
+9,RS,X: (partial) Interview,1,1982
+9,RS,X: (partial) Interview,2,4
+9,SE,-: Contact form missing,2,42
+9,SE,B: Refusal by respondent,2,1367
+9,SE,C: Refusal by proxy or before selection,2,103
+9,SE,D: Refusal because of drop out list,2,76
+9,SE,E: Noncontact or moved to unknown destination or still in country,2,358
+9,SE,F: Language barrier,2,140
+9,SE,G: Mentally / physically unable / ill / sick (short and long term),2,126
+9,SE,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,115
+9,SE,M: R moved out of the country,3,78
+9,SE,N: R deceased,3,15
+9,SE,Undefined,2,120
+9,SE,W: Invalid interview,2,3
+9,SE,X: (partial) Interview,1,1539
+9,SI,B: Refusal by respondent,2,402
+9,SI,C: Refusal by proxy or before selection,2,47
+9,SI,E: Noncontact or moved to unknown destination or still in country,2,157
+9,SI,F: Language barrier,2,10
+9,SI,G: Mentally / physically unable / ill / sick (short and long term),2,40
+9,SI,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,79
+9,SI,I: Address not traceable,2,1
+9,SI,J: Address not residential,3,2
+9,SI,"K: Derelict or demolished house, not yet build or not occupied",3,15
+9,SI,L: Other ineligible,3,2
+9,SI,M: R moved out of the country,3,23
+9,SI,N: R deceased,3,3
+9,SI,X: (partial) Interview,1,1318
+9,SI,X: (partial) Interview,2,1
+9,SK,B: Refusal by respondent,2,248
+9,SK,C: Refusal by proxy or before selection,2,1094
+9,SK,E: Noncontact or moved to unknown destination or still in country,2,220
+9,SK,F: Language barrier,2,6
+9,SK,G: Mentally / physically unable / ill / sick (short and long term),2,15
+9,SK,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,43
+9,SK,I: Address not traceable,2,29
+9,SK,J: Address not residential,3,16
+9,SK,"K: Derelict or demolished house, not yet build or not occupied",3,44
+9,SK,M: R moved out of the country,3,2
+9,SK,X: (partial) Interview,1,1083

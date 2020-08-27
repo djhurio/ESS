@@ -124,7 +124,19 @@ tab_variables[n_resp - n_na == 1L] # Only 1 respondent
 tab_variables[n_na < n_resp & total_Y == 0] # All answers are 0
 tab_variables[n_na < n_resp & total_Y > 0 & total_Y == total_Z] # All answers are 1
 tab_variables[sd_y == 0] # No variation in variable
-tab_variables[max_sd_y_psu == 0] # No variation in PSUs
+
+# No variation in PSUs
+tab_variables[max_sd_y_psu == 0]
+tab_variables[b > 1 & sd_y > 0 & ratio != 1 & max_sd_y_psu == 0 & n_resp - n_na > 1L]
+
+dat3[varname_ext == "R9_PT_D1_chldhhe", .N, keyby = .(varname_ext, value, value_y)][order(value)]
+dat3[varname_ext == "R9_PT_D1_chldhhe" & !is.na(value), .N, keyby = .(varname_ext, PSU, value, value_y)][order(value)]
+dat3[varname_ext == "R9_PT_D1_chldhhe" & PSU == "9_SK_1_2443_00000017927"]
+
+dat3[varname_ext == "R9_SK_D1_dscrdk", .N, keyby = .(varname_ext, value, value_y)][order(value)]
+dat3[varname_ext == "R9_SK_D1_dscrdk" & value == 1]
+dat3[varname_ext == "R9_SK_D1_dscrdk", .N, keyby = .(varname_ext, PSU, value, value_y)][order(value)]
+dat3[varname_ext == "R9_SK_D1_dscrdk" & PSU == "9_SK_1_2443_00000017927"]
 
 # Mark varibales where estimation of effective sample size is not possible:
 # 1) variable is a constant (sd_y == 0)

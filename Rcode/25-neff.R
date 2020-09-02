@@ -26,33 +26,33 @@ load("data/dat_ICC.Rdata")
 
 
 
-# Test ICC estimation
-tab_variables[essround == 9, .N, keyby = .(essround, cntry, domain, flag)]
-
-dcast.data.table(data = tab_variables[essround == 9],
-                 formula = essround + cntry + domain ~ flag,
-                 fun.aggregate = length)[order(`FALSE`)]
-
-
-x <- tab_variables[b > 1 & essround == 9 & (flag) & cntry %in% c("HU", "PL"),
-                   .(essround, cntry, domain, varname)]
-
-foo <- function(i) {
-  tab <- dat2[essround == x[i, essround] &
-                cntry == x[i, cntry] & domain == x[i, domain],
-              .N, keyby = c("essround", "cntry", "domain", x[i, varname])]
-  tab[, varname := x[i, varname]]
-  setnames(tab, x[i, varname], "value")
-  setcolorder(tab, c("essround", "cntry", "domain", "varname", "value"))
-  tab
-}
-
-foo(1)
-
-rbindlist(lapply(x[, .I], foo))
-
-dat2[essround == 9 & cntry == "PL" & domain == 1, .N, keyby = .(crpdwk)]
-dat2[essround == 9 & cntry == "PL" & domain == 2, .N, keyby = .(crpdwk)]
+# # Test ICC estimation
+# tab_variables[essround == 9, .N, keyby = .(essround, cntry, domain, flag)]
+#
+# dcast.data.table(data = tab_variables[essround == 9],
+#                  formula = essround + cntry + domain ~ flag,
+#                  fun.aggregate = length)[order(`FALSE`)]
+#
+#
+# x <- tab_variables[b > 1 & essround == 9 & (flag) & cntry %in% c("HU", "PL"),
+#                    .(essround, cntry, domain, varname)]
+#
+# foo <- function(i) {
+#   tab <- dat2[essround == x[i, essround] &
+#                 cntry == x[i, cntry] & domain == x[i, domain],
+#               .N, keyby = c("essround", "cntry", "domain", x[i, varname])]
+#   tab[, varname := x[i, varname]]
+#   setnames(tab, x[i, varname], "value")
+#   setcolorder(tab, c("essround", "cntry", "domain", "varname", "value"))
+#   tab
+# }
+#
+# foo(1)
+#
+# rbindlist(lapply(x[, .I], foo))
+#
+# dat2[essround == 9 & cntry == "PL" & domain == 1, .N, keyby = .(crpdwk)]
+# dat2[essround == 9 & cntry == "PL" & domain == 2, .N, keyby = .(crpdwk)]
 
 
 
@@ -60,7 +60,7 @@ dat2[essround == 9 & cntry == "PL" & domain == 2, .N, keyby = .(crpdwk)]
 # Label rounds
 rounds <- sort(unique(dat2$essround))
 
-dat2[, essround := factor(essround, rounds, paste0("R", rounds))]
+dat2[,          essround := factor(essround, rounds, paste0("R", rounds))]
 tab_variables[, essround := factor(essround, rounds, paste0("R", rounds))]
 
 dat2[, .N, keyby = .(essround)]
@@ -116,8 +116,10 @@ pl_deff_p <- ggplot(dat_deff_p) +
 
 
 # Merge
-dat_deff <- merge(tab_variables[!(flag)], dat_ICC,
+dat_deff <- merge(tab_variables, dat_ICC,
                   by = "varname_ext", all.x = T)
+
+dat_deff[, .N, keyby = .(flag, b1 = b == 1, is.na(ICC))]
 
 dat_deff <- merge(dat_deff, dat_deff_p,
                   by = c("essround", "cntry", "domain"), all.x = T)
@@ -127,12 +129,17 @@ dat_deff[, summary(b)]
 dat_deff[, summary(ICC)]
 
 dat_deff[b == 1, summary(ICC)]
-dat_deff[b >  1, summary(ICC)]
+dat_deff[(flag), summary(ICC)]
+dat_deff[!(flag) & b > 1, summary(ICC)]
 
-dat_deff[b == 1, ICC := 0]
+dat_deff[(flag) | b == 1, ICC := 0]
+
+dat_deff[, summary(ICC)]
 
 dat_deff[, deff_c := 1 + (b - 1) * ICC]
+
 dat_deff[, summary(deff_c)]
+dat_deff[, as.list(summary(deff_c)), keyby = .(flag)]
 
 dat_deff[, deff := deff_p * deff_c]
 
@@ -209,12 +216,14 @@ plot_ICC_varname_domain <- function(x) {
 
 
 # Aggregate to round / cntry / domain
-tab_deff <- dat_deff[, c(.(n_variable = as.numeric(.N)), lapply(.SD, mean)),
+tab_deff <- dat_deff[, c(.(n_variable = as.numeric(.N)),
+                         lapply(.SD, mean)),
                      .SDcols = c("n_resp", "pop_size", "ICC", "b",
                                  "deff_c", "deff_p", "deff"),
                      keyby = .(essround, cntry, domain)]
 
 tab_deff
+tab_deff[, mean(n_variable)]
 tab_deff[, sum(n_variable)]
 
 tab_deff[, all.equal(deff_c, 1 + (b - 1) * ICC)]
@@ -268,7 +277,7 @@ tab_deff_2 <- tab_deff[, c(.(n_domains = as.numeric(.N),
 tab_deff_2[, deff := n_resp / n_eff]
 
 # Min effective sample size
-tab_deff_2[, min_n_eff := ifelse(pop_size < 2e6, 800, 1500)]
+tab_deff_2[, min_n_eff := ifelse(pop_size < 2e6, 800L, 1500L)]
 
 # Evaluation
 tab_deff_2[, assessment := (n_eff >= min_n_eff)]

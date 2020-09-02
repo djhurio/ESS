@@ -63,7 +63,7 @@ dat3[, value_z := as.integer(!is.na(value))]
 
 # Test
 dat3[, lapply(.SD, function(x) round(mean(x), 3)),
-     .SDcols = c("value_y", "value_z"), by = .(varname)][order(-value_y)]
+     .SDcols = c("value_y", "value_z"), by = .(varname)][order(value_y)]
 dat3[, lapply(.SD, function(x) round(mean(x), 3)),
      .SDcols = c("value_y", "value_z"), by = .(varname)][order(-value_z)]
 
@@ -129,14 +129,14 @@ tab_variables[sd_y == 0] # No variation in variable
 tab_variables[max_sd_y_psu == 0]
 tab_variables[b > 1 & sd_y > 0 & ratio != 1 & max_sd_y_psu == 0 & n_resp - n_na > 1L]
 
-dat3[varname_ext == "R9_PT_D1_chldhhe", .N, keyby = .(varname_ext, value, value_y)][order(value)]
-dat3[varname_ext == "R9_PT_D1_chldhhe" & !is.na(value), .N, keyby = .(varname_ext, PSU, value, value_y)][order(value)]
-dat3[varname_ext == "R9_PT_D1_chldhhe" & PSU == "9_SK_1_2443_00000017927"]
+# dat3[varname_ext == "R9_PT_D1_chldhhe", .N, keyby = .(varname_ext, value, value_y)][order(value)]
+# dat3[varname_ext == "R9_PT_D1_chldhhe" & !is.na(value), .N, keyby = .(varname_ext, PSU, value, value_y)][order(value)]
+# dat3[varname_ext == "R9_PT_D1_chldhhe" & PSU == "9_SK_1_2443_00000017927"]
 
-dat3[varname_ext == "R9_SK_D1_dscrdk", .N, keyby = .(varname_ext, value, value_y)][order(value)]
-dat3[varname_ext == "R9_SK_D1_dscrdk" & value == 1]
-dat3[varname_ext == "R9_SK_D1_dscrdk", .N, keyby = .(varname_ext, PSU, value, value_y)][order(value)]
-dat3[varname_ext == "R9_SK_D1_dscrdk" & PSU == "9_SK_1_2443_00000017927"]
+# dat3[varname_ext == "R9_SK_D1_dscrdk", .N, keyby = .(varname_ext, value, value_y)][order(value)]
+# dat3[varname_ext == "R9_SK_D1_dscrdk" & value == 1]
+# dat3[varname_ext == "R9_SK_D1_dscrdk", .N, keyby = .(varname_ext, PSU, value, value_y)][order(value)]
+# dat3[varname_ext == "R9_SK_D1_dscrdk" & PSU == "9_SK_1_2443_00000017927"]
 
 # Mark varibales where estimation of effective sample size is not possible:
 # 1) variable is a constant (sd_y == 0)
@@ -149,10 +149,10 @@ tab_variables[, .N, keyby = .(flag)]
 
 tab_variables[("R5_LT_D1_emplno")]
 
-# Aggregate up to round and country
-tab_variables[, flag := any(flag), by = .(essround, cntry, varname)]
-tab_variables[, .N, keyby = .(flag)]
-
+# # Aggregate up to round and country
+# tab_variables[, flag := any(flag), by = .(essround, cntry, varname)]
+# tab_variables[, .N, keyby = .(flag)]
+# # Not necessary anymore as ICC will be asumed to be 0 in cases where ICC estimation is not possible
 
 # Number of variables by country, domain, round
 dcast.data.table(data = tab_variables[!(flag)],
@@ -223,7 +223,7 @@ estimICC <- function(x) {
              #                            data = dat3[(x)][!is.na(value)])),
              ICC = max(0, ICC::ICCbare(x = factor(PSU),
                                        y = lin_val,
-                                       data = dat3[(x)])))
+                                       data = dat3[.(x)])))
 }
 
 estimICC(sample(varname_list, 1))
@@ -313,7 +313,7 @@ t1 <- Sys.time()
 dat_ICC <- lapply(varname_list, estimICC)
 t2 <- Sys.time()
 t2 - t1
-# Time difference of 38.32429 mins
+# Time difference of 42.20912 mins
 
 # Options
 options(warn = 1)
@@ -328,7 +328,6 @@ save(dat_ICC, file = "data/dat_ICC.Rdata")
 
 
 # Load
-
 load("data/dat_ICC.Rdata")
 
 dat_ICC

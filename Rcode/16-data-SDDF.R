@@ -9,13 +9,7 @@ options(datatable.keepLeadingZeros = TRUE)
 
 # Packages
 require(data.table)
-require(lubridate)
-require(stringr)
 require(essurvey)
-require(openxlsx)
-require(parallel)
-
-detectCores()
 
 
 # Reset ####
@@ -23,14 +17,15 @@ rm(list = ls())
 gc()
 
 
-
 # ESS data ####
 set_email("martins.liberts+ess@gmail.com")
 
 
-# Rounds 1:8
+# Import SDDF for the rounds 1:8
 t1 <- Sys.time()
-dat <- mclapply(show_countries(), function(cntry) {
+
+# Double loop through all countries and rounds
+dat <- lapply(show_countries(), function(cntry) {
   lapply(show_sddf_cntrounds(cntry), function(rnd) {
     cat(cntry, "round", rnd, "\n")
     sddf <- import_sddf_country(country = cntry, rounds = rnd)
@@ -38,34 +33,48 @@ dat <- mclapply(show_countries(), function(cntry) {
     sddf[, essround := rnd]
     sddf
   })
-}, mc.silent = F, mc.cores = 4)
+})
+
 t2 <- Sys.time()
 t2 - t1
-# Time difference of 5.098674 mins
+# Time difference of 16.56868 mins
 
+
+# Convert to one level list
 dat <- unlist(dat, recursive = F)
 
+# Combine into one data file
 datSDDF1 <- rbindlist(dat, use.names = T, fill = T)
 
 
 # Round 9
+# Since round 9 SDDF variables are included in the main survey data file
 dat <- import_rounds(rounds = 9)
 setDT(dat)
 
+# Keep only SDDF variables
 varnames <- intersect(names(datSDDF1), names(dat))
 datSDDF9 <- dat[, ..varnames]
 rm(dat)
 
 # Domain variable for R9
-dat.domain.r9 <- haven::read_stata("data/R9/ess9_domain.dta")
+# By mistake domain variable for the R9 has not been published into the public file (edition 2)
+# Please contact the ESS SWEP for the domain variable
+dat.domain.r9 <- haven::read_stata("data/R9/ess9_domain_all.dta")
 setDT(dat.domain.r9)
 
-datSDDF9[, .(min_idno = min(idno), max_idno = max(idno)), keyby = .(cntry)]
-dat.domain.r9[, .(min_idno = min(idno), max_idno = max(idno)), keyby = .(cntry)]
+# # Check the IDNO
+# datSDDF9[, .(min_idno = min(idno), max_idno = max(idno)), keyby = .(cntry)]
+# dat.domain.r9[, .(min_idno = min(idno_scrambled),
+#                   max_idno = max(idno_scrambled)), keyby = .(cntry)]
 
-datSDDF9 <- merge(datSDDF9, dat.domain.r9,
-                  by = intersect(names(datSDDF9), names(dat.domain.r9)))
 
+# Merge the domain variable
+datSDDF9 <- merge(x = datSDDF9,
+                  y = dat.domain.r9[, .(cntry, idno_scrambled, domain)],
+                  by.x = c("cntry", "idno"),
+                  by.y = c("cntry", "idno_scrambled"),
+                  all.x = T, sort = F)
 
 
 # Combine SDDF for rounds 1:9
@@ -90,19 +99,22 @@ datSDDF[, .N, keyby = .(domain)]
 datSDDF[, domain := as.integer(domain)]
 datSDDF[, .N, keyby = .(domain)]
 
-datSDDF[is.na(domain), domain := 1L]
-datSDDF[, .N, keyby = .(domain)]
+# Domains are available only since round 7
+dcast.data.table(data = datSDDF, formula = essround ~ domain,
+                 fun.aggregate = length)
 
+# I assume 1 domain if domain information is not available
+datSDDF[is.na(domain), domain := 1L]
 
 dcast.data.table(data = datSDDF, formula = essround ~ domain,
                  fun.aggregate = length)
 
 
+# Keep only necessary SDDF variables
 datSDDF <- datSDDF[, .(essround, cntry, idno, domain, stratum, psu, prob)]
 
 datSDDF[, lapply(.SD, class)]
 
 
-# Save ####
-
+# Save for the next step
 save(datSDDF, file = "data/datSDDF.Rdata")

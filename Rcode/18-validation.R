@@ -56,7 +56,6 @@ datSDDF[cntry == "NA" | is.na(idno), .N,
 datSDDF <- datSDDF[!is.na(idno)]
 
 # domain
-datSDDF[domain == 0L, domain := 1L]
 dcast.data.table(datSDDF, essround ~ domain, fun.aggregate = length)
 
 anyDuplicated(datSDDF, by = c("essround", "cntry", "domain", "idno"))
@@ -65,24 +64,29 @@ datSDDF[, n := .N, by = .(essround, cntry, domain, idno)]
 datSDDF[n > 1][order(essround, cntry, domain, idno)]
 datSDDF[, n := NULL]
 
+
 # str(datSDDF)
+# sapply(datSDDF, class)
 
 datSDDF[, .N, keyby = domain]
 datSDDF[, .N, keyby = .(essround, cntry, domain)]
 
-datSDDF[, .N, keyby = .(essround, cntry)]
-datSDDF[, .N, keyby = .(essround, cntry, stratum)]
-datSDDF[, .N, keyby = .(essround, cntry, stratum, domain)]
-
 datSDDF[is.na(stratum), .N, keyby = .(essround, cntry, stratum)]
-datSDDF[grep("NA", stratum), .N,
-        keyby = .(essround, cntry, stratum = trimws(stratum))]
 
-# datSDDF[, .N, keyby = nchar(stratum)]
+m <- datSDDF[, min(stratum, na.rm = T)]
+m
 
+# Recode missing stratum values
+datSDDF[is.na(stratum), stratum := m - 1L]
 
 # Create strata variable from country, domain and stratum
-datSDDF[, STR := paste(essround, cntry, domain, trimws(stratum), sep = "_")]
+m <- datSDDF[, nchar(max(stratum))]
+m
+
+datSDDF[, STR := paste(paste0("R", essround), cntry, paste0("D", domain),
+                       stringr::str_pad(string = stratum, width = m, pad = "0"),
+                       sep = "_")]
+datSDDF[, .N, keyby = .(essround, cntry, domain, stratum, STR)]
 datSDDF[, .N, keyby = .(essround, cntry, domain, stratum)]
 datSDDF[, .N, keyby = .(STR)]
 
@@ -107,15 +111,23 @@ datSDDF[n_na_psu == netsamps, psu := idno]
 
 datSDDF[, n_na_psu := sum(is.na(psu)), by = .(essround, cntry, domain)]
 
-datSDDF[n_na_psu > 0, .(.N, sum(is.na(psu))),
+datSDDF[n_na_psu > 0, .(.N, PSU_NA = sum(is.na(psu))),
         keyby = .(essround, cntry, domain)]
 
-m <- datSDDF[!is.na(psu), max(nchar(psu))]
+m <- datSDDF[, min(psu, na.rm = T)]
 m
 
-datSDDF[, PSU := paste(STR, formatC(psu, digits = m - 1, flag = 0),
+# Recode missing PSU values
+datSDDF[is.na(psu), psu := m - 1L]
+
+m <- datSDDF[, nchar(max(psu))]
+m
+
+datSDDF[, PSU := paste(STR,
+                       stringr::str_pad(string = psu, width = m, pad = "0"),
                        sep = "_")]
 
+datSDDF[, .N, keyby = .(essround, cntry, domain, stratum, psu, PSU)]
 datSDDF[, .N, keyby = .(essround, cntry, domain, stratum, psu)]
 datSDDF[, .N, keyby = .(PSU)]
 datSDDF[, .N, keyby = .(STR, PSU)]
@@ -139,17 +151,16 @@ tab_psu
 tabl <- list(tab_cntry, tab_strata, tab_psu)
 names(tabl) <- c("cntry", "strata", "psu")
 
-write.xlsx(tabl, file = "results/SDDF-tables-2.xlsx",
+write.xlsx(tabl, file = "results/SDDF-tables.xlsx",
            colWidths = "auto", firstRow = T,
            headerStyle = createStyle(textDecoration = "italic",
                                      halign = "center"))
 
 
-datSDDF2 <- datSDDF[, .(essround, cntry, idno, domain, STR, PSU, prob)]
+datSDDF2 <- datSDDF[, .(essround, cntry, domain, STR, PSU, idno, prob)]
 
 
 # Survey data ####
-
 load("data/dat.Rdata")
 
 show_rounds()
@@ -273,9 +284,8 @@ pl <- ggplot(tmp, aes(x = dweight, y = dweight2, colour = diff)) +
     facet_grid(essround ~ cntry) +
     theme_bw()
 
-png(filename = "results/plot_dweight.png", width = 1920, height = 1080)
-print(pl)
-dev.off()
+ggsave(filename = "results/plot_dweight.png", plot = pl, width = 16, height = 9)
+
 
 # Extreme design weights are being cut
 

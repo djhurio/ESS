@@ -217,7 +217,8 @@ plot_ICC_varname_domain <- function(x) {
 
 # Aggregate to round / cntry / domain
 tab_deff <- dat_deff[, c(.(n_variable = as.numeric(.N)),
-                         lapply(.SD, mean)),
+                         lapply(.SD, mean),
+                         .(ICC_median = median(ICC))),
                      .SDcols = c("n_resp", "pop_size", "ICC", "b",
                                  "deff_c", "deff_p", "deff"),
                      keyby = .(essround, cntry, domain)]
@@ -231,6 +232,30 @@ tab_deff[, all.equal(deff, deff_p * deff_c)]
 
 # Effective sample should be recalculated as it is not a linear function from deff
 tab_deff[, n_eff := n_resp / deff]
+
+
+tab_deff[, summary(ICC)]
+tab_deff[, summary(ICC_median)]
+
+m <- tab_deff[, max(ICC, ICC_median)]
+
+# ICC mean vs ICC median
+pl_ICC_test1 <- ggplot(data = tab_deff[b > 1],
+                       mapping = aes(x = ICC, y = ICC_median)) +
+  geom_point(mapping = aes(colour = cntry)) +
+  geom_abline(slope = 1, intercept = 0) +
+  coord_equal() + xlim(c(0, m)) + ylim(c(0, m)) +
+  ggtitle("ICC: mean vs median")
+
+pl_ICC_test2 <- pl_ICC_test1 +
+  geom_text(mapping = aes(label = paste(cntry, essround, sep = "_")),
+            alpha = .5)
+
+pl_ICC_test1
+pl_ICC_test2
+
+ggsave(filename = "results/pl_ICC_test1.png", plot = pl_ICC_test1)
+ggsave(filename = "results/pl_ICC_test2.png", plot = pl_ICC_test2)
 
 pl_ICC <- ggplot(tab_deff) +
   geom_col(aes(x = essround, y = ICC, fill = essround, linetype = domain),
@@ -403,7 +428,7 @@ for (i in cntry_list) {
 
 # list.files(path = "results/cntry", full.names = T)
 
-fname <- "results/ESS-cntry-results-R9.zip"
+fname <- "results/ESS-cntry-results.zip"
 if (file.exists(fname)) file.remove(fname)
 zip::zip(zipfile = fname,
          files = list.files(path = "results/cntry", full.names = T),

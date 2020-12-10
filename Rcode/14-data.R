@@ -21,14 +21,20 @@ gc()
 # Load all ESS survey data ####
 set_email("martins.liberts+ess@gmail.com")
 
+# Round labels
+round.labels <- paste0("R", sprintf("%02d", show_rounds()))
+round.labels
+
+# Import data files from all rounds (SPSS data format is used)
 dat <- import_all_rounds(format = "spss")
 
 length(dat)
 sapply(dat, class)
 
-# Combine all round data files into one data file
-dat <- rbindlist(dat, use.names = T, fill = T)
-class(dat)
+
+# Save names of the variables
+dat.names <- lapply(dat, names)
+sapply(dat.names, length)
 
 
 # Load 75 variable names to be used for ICC estimation
@@ -53,12 +59,30 @@ setnames(variables, c("type", "varname"))
 variables[, varname := tolower(varname)]
 variables
 
-variables[, is.available := varname %in% names(dat)]
+variables$varname
+
+# Mark which variables are available in each round
+variables[, c(round.labels) := lapply(dat.names,
+                                      function(x) (variables$varname %in% x))]
+
+variables[, is.available := all(unlist(.SD)), .SDcols = round.labels,
+          by = .(varname)]
 variables[, .N, keyby = .(is.available)]
+variables[!(is.available)]
+# Some of the 75 variables are not available in all rounds
+# ICC will be assumed to be 0 in rounds when a variable is not available
+
+
+
+# Combine data from all rounds in one data.table
+dat <- rbindlist(dat, use.names = T, fill = T)
+class(dat)
+gc()
 
 
 # Check values for the target variables
 
+# Function returns a character of max 10 smalles values from a variable
 foo <- function(x) {
   if (x %in% names(dat)) {
     paste(sort(head(unique(dat[[x]]), n = 10)), collapse = ",")
@@ -86,15 +110,18 @@ fwrite(variables, file = "tables/variables.csv", quote = T)
 # tail(names(dat), 10)
 
 
-# Necessary variables
+# Variable selection to reduce the size of a data.table
+
+# Survey design variables and weights
 varnames.design <- c("essround", "edition", "proddate", "cntry", "idno",
                      "dweight", "pspwght", "pweight", "anweight")
 
 
 # Keep only necessary variables
 dat <- dat[, c(varnames.design, variables$varname), with = F]
-
 # dim(dat)
+gc()
+
 
 # Check the edition and production dates
 dat[, .N, keyby = .(essround, edition, proddate)]

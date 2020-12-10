@@ -76,8 +76,14 @@ dcast.data.table(data = dat3, formula = varname ~ paste0("R", essround),
 
 
 # Variable name extended with round, country, and domain
+
+m <- max(nchar(variables$varname))
+m
+
 dat3[, varname_ext := paste(paste0("R", essround), cntry, paste0("D", domain),
-                            varname, sep = "_")]
+                            stringr::str_pad(string = varname, width = m,
+                                             side = "right", pad = "_"),
+                            sep = "_")]
 setkey(dat3, varname_ext)
 dat3[, .N, keyby = .(varname_ext)]
 
@@ -96,7 +102,7 @@ tab_psu[n == 1L, sd_y_psu := 0]
 tab_psu <- tab_psu[, .(max_sd_y_psu = max(sd_y_psu)), keyby = .(varname_ext)]
 tab_psu[max_sd_y_psu == 0]
 
-tab_psu[("R5_LT_D1_emplno")]
+tab_psu[("R5_LT_D1_emplno__")]
 
 
 # Summary table
@@ -147,12 +153,8 @@ tab_variables[, flag := (b > 1) & (sd_y == 0 | total_Y == total_Z |
                 (n_resp - n_na) == 1L | max_sd_y_psu == 0)]
 tab_variables[, .N, keyby = .(flag)]
 
-tab_variables[("R5_LT_D1_emplno")]
+tab_variables[("R5_LT_D1_emplno__")]
 
-# # Aggregate up to round and country
-# tab_variables[, flag := any(flag), by = .(essround, cntry, varname)]
-# tab_variables[, .N, keyby = .(flag)]
-# # Not necessary anymore as ICC will be asumed to be 0 in cases where ICC estimation is not possible
 
 # Number of variables by country, domain, round
 dcast.data.table(data = tab_variables[!(flag)],
@@ -166,7 +168,7 @@ save(tab_variables, file = "data/tab_variables.Rdata")
 varname_list <- tab_variables[(b > 1) & !(flag), varname_ext]
 length(varname_list)
 
-"R5_LT_D1_emplno" %in% varname_list
+"R5_LT_D1_emplno__" %in% varname_list
 
 
 # Estimate ICC ####
@@ -218,20 +220,17 @@ setkey(dat3, varname_ext, PSU)
 estimICC <- function(x) {
   cat(which(x == varname_list), "/", length(varname_list), ":", x, "\n")
   data.table(varname_ext = x,
-             # ICC1 = max(0, ICC::ICCbare(x = factor(PSU),
-             #                            y = value,
-             #                            data = dat3[(x)][!is.na(value)])),
              ICC = max(0, ICC::ICCbare(x = factor(PSU),
                                        y = lin_val,
                                        data = dat3[.(x)])))
 }
 
 estimICC(sample(varname_list, 1))
-# estimICC("R5_LT_D1_emplno")
+# estimICC("R5_LT_D1_emplno__")
 
-dat3[("R5_LT_D1_emplno"), .N, keyby = .(value, value_y, value_z)]
-dat3[("R5_LT_D1_emplno")][!is.na(value), .N,
-                          keyby = .(PSU, value, value_y, value_z)]
+dat3[("R5_LT_D1_emplno__"), .N, keyby = .(value, value_y, value_z)]
+dat3[("R5_LT_D1_emplno__")][!is.na(value), .N,
+                            keyby = .(PSU, value, value_y, value_z)]
 
 
 # # ICC testing
@@ -314,6 +313,7 @@ dat_ICC <- lapply(varname_list, estimICC)
 t2 <- Sys.time()
 t2 - t1
 # Time difference of 42.20912 mins
+# Time difference of 35.21384 mins (2020-12-10)
 
 # Options
 options(warn = 1)
@@ -341,6 +341,7 @@ dat_ICC[, essround := substring(varname_ext, 1, 2)]
 dat_ICC[, cntry    := substring(varname_ext, 4, 5)]
 dat_ICC[, domain   := substring(varname_ext, 7, 8)]
 dat_ICC[, varname  := substring(varname_ext, 10)]
+dat_ICC[, varname  := gsub("_", "", varname)]
 
 
 # pl0 <- ggplot(data = dat_ICC, mapping = aes(x = ICC1, y = ICC2)) +
@@ -394,14 +395,14 @@ dat_ICC[, varname  := substring(varname_ext, 10)]
 #
 # fwrite(x = dat_ICC, file = "results/ICC1_ICC2.csv")
 
-dat_ICC[("R9_PL_D2_emplno")]
+dat_ICC[("R9_PL_D2_emplno__")]
 
-tab <- dat3[("R9_PL_D2_emplno"), .(n = .N),
+tab <- dat3[("R9_PL_D2_emplno__"), .(n = .N),
             keyby = .(varname_ext, lin_val, value, value_y, value_z)]
 tab[, p := prop.table(n)]
 tab
 
-dat3[("R9_PL_D2_emplno")][!is.na(value), .(n = .N),
+dat3[("R9_PL_D2_emplno__")][!is.na(value), .(n = .N),
      keyby = .(varname_ext, PSU, lin_val, value, value_y, value_z)]
 
 save(dat3, file = "~/data/dat3.Rdata")

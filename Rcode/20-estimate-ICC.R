@@ -5,7 +5,6 @@ options(encoding = "UTF-8")
 options(max.print = 10e3)
 options(datatable.integer64 = "character")
 options(datatable.keepLeadingZeros = TRUE)
-options(warn = 2) # Will stop on warning
 
 # Packages
 require(essurvey)
@@ -37,7 +36,7 @@ dat_b[b == 1]
 # Transfer data to long format
 dat3 <- melt.data.table(data = dat2,
                         id.vars = c("essround", "cntry", "domain",
-                                    "STR", "PSU", "idno",
+                                    "STR", "PSU", "idno", "dweight",
                                     "weight_des", "weight_est"),
                         measure.vars = variables$varname, na.rm = F,
                         variable.name = "varname", variable.factor = F)
@@ -76,24 +75,30 @@ dcast.data.table(data = dat3, formula = varname ~ paste0("R", essround),
 
 
 # Variable name extended with round, country, and domain
-
-m <- max(nchar(variables$varname))
-m
-
 dat3[, varname_ext := paste(paste0("R", essround), cntry, paste0("D", domain),
-                            stringr::str_pad(string = varname, width = m,
-                                             side = "right", pad = "_"),
-                            sep = "_")]
+                            varname, sep = "_")]
 setkey(dat3, varname_ext)
 dat3[, .N, keyby = .(varname_ext)]
 
 
 # Taylor linearisation of ratio of two totals
+# using post-stratified and population size rised weights
 dat3[, total_Y := sum(value_y * weight_est), by = .(varname_ext)]
 dat3[, total_Z := sum(value_z * weight_est), by = .(varname_ext)]
-dat3[total_Z > 0, lin_val := (value_y - total_Y / total_Z * value_z) / total_Z]
+dat3[total_Z > 0,
+     lin_val := (value_y - total_Y / total_Z * value_z) / total_Z]
 
+# Taylor linearisation of ratio of two totals (inverse prob)
+dat3[, total_Yd := sum(value_y * dweight), by = .(varname_ext)]
+dat3[, total_Zd := sum(value_z * dweight), by = .(varname_ext)]
+dat3[total_Zd > 0,
+     lin_vald := (value_y - total_Yd / total_Zd * value_z) / total_Zd]
 
+dat3[total_Z > 0, cor(lin_val, lin_vald)]
+
+# ggplot(data = dat3[total_Z > 0][sample(.N, 1e3)],
+#        mapping = aes(x = lin_val, y = lin_vald)) +
+#   geom_point()
 
 # PSU variance
 tab_psu <- dat3[!is.na(value), .(n = .N, sd_y_psu = sd(value_y)),
@@ -102,7 +107,7 @@ tab_psu[n == 1L, sd_y_psu := 0]
 tab_psu <- tab_psu[, .(max_sd_y_psu = max(sd_y_psu)), keyby = .(varname_ext)]
 tab_psu[max_sd_y_psu == 0]
 
-tab_psu[("R5_LT_D1_emplno__")]
+tab_psu[("R5_LT_D1_emplno")]
 
 
 # Summary table
@@ -135,15 +140,6 @@ tab_variables[sd_y == 0] # No variation in variable
 tab_variables[max_sd_y_psu == 0]
 tab_variables[b > 1 & sd_y > 0 & ratio != 1 & max_sd_y_psu == 0 & n_resp - n_na > 1L]
 
-# dat3[varname_ext == "R9_PT_D1_chldhhe", .N, keyby = .(varname_ext, value, value_y)][order(value)]
-# dat3[varname_ext == "R9_PT_D1_chldhhe" & !is.na(value), .N, keyby = .(varname_ext, PSU, value, value_y)][order(value)]
-# dat3[varname_ext == "R9_PT_D1_chldhhe" & PSU == "9_SK_1_2443_00000017927"]
-
-# dat3[varname_ext == "R9_SK_D1_dscrdk", .N, keyby = .(varname_ext, value, value_y)][order(value)]
-# dat3[varname_ext == "R9_SK_D1_dscrdk" & value == 1]
-# dat3[varname_ext == "R9_SK_D1_dscrdk", .N, keyby = .(varname_ext, PSU, value, value_y)][order(value)]
-# dat3[varname_ext == "R9_SK_D1_dscrdk" & PSU == "9_SK_1_2443_00000017927"]
-
 # Mark varibales where estimation of effective sample size is not possible:
 # 1) variable is a constant (sd_y == 0)
 # 2) mean estimate is 1 (total_Y == total_Z)
@@ -153,7 +149,7 @@ tab_variables[, flag := (b > 1) & (sd_y == 0 | total_Y == total_Z |
                 (n_resp - n_na) == 1L | max_sd_y_psu == 0)]
 tab_variables[, .N, keyby = .(flag)]
 
-tab_variables[("R5_LT_D1_emplno__")]
+tab_variables[("R5_LT_D1_emplno")]
 
 
 # Number of variables by country, domain, round
@@ -167,8 +163,6 @@ save(tab_variables, file = "data/tab_variables.Rdata")
 # List of extended variable names to be used in the ICC estimation
 varname_list <- tab_variables[(b > 1) & !(flag), varname_ext]
 length(varname_list)
-
-"R5_LT_D1_emplno__" %in% varname_list
 
 
 # Estimate ICC ####
@@ -222,100 +216,37 @@ estimICC <- function(x) {
   data.table(varname_ext = x,
              ICC = max(0, ICC::ICCbare(x = factor(PSU),
                                        y = lin_val,
-                                       data = dat3[.(x)])))
+                                       data = dat3[.(x)])),
+             ICCd = max(0, ICC::ICCbare(x = factor(PSU),
+                                        y = lin_vald,
+                                        data = dat3[.(x)])))
 }
 
 estimICC(sample(varname_list, 1))
-# estimICC("R5_LT_D1_emplno__")
 
-dat3[("R5_LT_D1_emplno__"), .N, keyby = .(value, value_y, value_z)]
-dat3[("R5_LT_D1_emplno__")][!is.na(value), .N,
-                            keyby = .(PSU, value, value_y, value_z)]
-
-
-# # ICC testing
-# # The case of ESS8 CZ data
+# dat_ICC_test <- lapply(sample(varname_list, 1e3), estimICC)
+# dat_ICC_test <- rbindlist(dat_ICC_test)
+# dat_ICC_test
 #
-# # Load ICC estimates received from Peter
-# ICC.est.test <- fread(file = "data/ESS8CZ/ESS8-CZ-ICC-Peter.txt", sep = " ",
-#                       drop = c(1, 2, 6), blank.lines.skip = T, na.strings = ".")
-#
-# # x <- "R9_LV_D1_happy"
-#
-# estimICC_test <- function(x) {
-#   cat("TEST:", x, "\n")
-#
-#   tab.anova <- anova(aov(value ~ PSU, data = dat3[(x)][!is.na(value)]))
-#   MeanSq <- tab.anova$`Mean Sq`
-#
-#   psu.size  <- dat3[(x)][!is.na(value), .N, by = .(PSU)][, N]
-#   psu.count <- length(psu.size)
-#
-#   var.a <- (MeanSq[1] - MeanSq[2]) /
-#     ((1 / (psu.count - 1)) * (sum(psu.size) - (sum(psu.size ^ 2) / sum(psu.size))))
-#
-#   data.table(varname_ext = x,
-#              ICC1 = max(0, ICC::ICCbare(x = factor(PSU),
-#                                         y = value,
-#                                         data = dat3[(x)][!is.na(value)])),
-#              ICC2 = max(0, ICC::ICCbare(x = factor(PSU),
-#                                         y = lin_val,
-#                                         data = dat3[(x)])))
-# }
-#
-# estimICC_test("R8_CZ_D1_aesfdrk")
-# # 0.1403413
-#
-# estimICC_test(sample(varname_list, 1))
-#
-# ICC.est <- rbindlist(lapply(grep("R8_CZ", varname_list, value = T),
-#                             estimICC_test))
-# ICC.est
-#
-# ggplot(data = ICC.est, mapping = aes(ICC1, ICC2)) +
-#   geom_point() +
-#   geom_text(mapping = aes(label = substring(varname_ext, 10)),
-#             hjust = 1, vjust = 0, colour = "grey") +
-#   geom_abline(intercept = 0, slope = 1, colour = "red") +
-#   ggtitle("ICC estimates for R8 CZ") +
-#   theme_bw()
-#
-# dat3[("R8_CZ_D1_emplno"), .N, keyby = .(value, value_y, value_z)]
-#
-# dat_test <- merge(tab_variables[cntry == "CZ" & essround == 8], ICC.est,
-#                   by = "varname_ext", all.x = T)
-# dat_test <- merge(dat_test, ICC.est.test, by = c("cntry", "varname"), all.x = T)
-#
-# dat_test[, test1 := abs(ICC1 - roh) < 1e-6]
-# dat_test[, test2 := abs(ICC2 - roh) < 1e-6]
-#
-# dat_test[, .N, keyby = .(flag, test1, test2)]
-#
-# dat_test[!(test1), .(varname_ext, n_na, ICC1, ICC2, roh)]
-#
-# dat_test[is.na(test1)]
-#
-# dat_test[total_Z == pop_size][order(abs(ICC1 - roh))]
-#
-#
-# # # Save
-# # write.xlsx(dat_test, file = "results/ESS8_CZ_dat_deff.xlsx",
-# #            colWidths = "auto", firstRow = T,
-# #            headerStyle = createStyle(textDecoration = "italic",
-# #                                      halign = "center"))
-
+# dat_ICC_test[, cor(ICC, ICCd)]
+# qplot(x = ICC, y = ICCd, data = dat_ICC_test)
 
 
 # Real estimation for all rounds and countries
+
+# Options (stop at warning)
+options(warn = 2)
 gc()
+
 t1 <- Sys.time()
 dat_ICC <- lapply(varname_list, estimICC)
 t2 <- Sys.time()
+
 t2 - t1
 # Time difference of 42.20912 mins
 # Time difference of 35.21384 mins (2020-12-10)
 
-# Options
+# Options (stop at error - default)
 options(warn = 1)
 
 dat_ICC[1:3]
@@ -341,7 +272,6 @@ dat_ICC[, essround := substring(varname_ext, 1, 2)]
 dat_ICC[, cntry    := substring(varname_ext, 4, 5)]
 dat_ICC[, domain   := substring(varname_ext, 7, 8)]
 dat_ICC[, varname  := substring(varname_ext, 10)]
-dat_ICC[, varname  := gsub("_", "", varname)]
 
 
 # pl0 <- ggplot(data = dat_ICC, mapping = aes(x = ICC1, y = ICC2)) +
@@ -394,15 +324,5 @@ dat_ICC[, varname  := gsub("_", "", varname)]
 #         keyby = .(varname)][, .N, keyby = .(ICC1 > ICC2)]
 #
 # fwrite(x = dat_ICC, file = "results/ICC1_ICC2.csv")
-
-dat_ICC[("R9_PL_D2_emplno__")]
-
-tab <- dat3[("R9_PL_D2_emplno__"), .(n = .N),
-            keyby = .(varname_ext, lin_val, value, value_y, value_z)]
-tab[, p := prop.table(n)]
-tab
-
-dat3[("R9_PL_D2_emplno__")][!is.na(value), .(n = .N),
-     keyby = .(varname_ext, PSU, lin_val, value, value_y, value_z)]
 
 save(dat3, file = "~/data/dat3.Rdata")

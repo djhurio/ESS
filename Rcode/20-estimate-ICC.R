@@ -27,6 +27,8 @@ dat_b <- dat2[, .N, keyby = .(essround, cntry, domain, PSU)]
 dat_b <- dat_b[, .(b = mean(N)), keyby = .(essround, cntry, domain)]
 
 dat_b
+dat_b[essround == 9 & cntry == "HU"]
+
 dat_b[order(b)]
 dat_b[, summary(b)]
 
@@ -96,9 +98,9 @@ dat3[total_Zd > 0,
 
 dat3[total_Z > 0, cor(lin_val, lin_vald)]
 
-# ggplot(data = dat3[total_Z > 0][sample(.N, 1e3)],
-#        mapping = aes(x = lin_val, y = lin_vald)) +
-#   geom_point()
+ggplot(data = dat3[total_Z > 0][sample(.N, 1e3)],
+       mapping = aes(x = lin_val, y = lin_vald)) +
+  geom_point()
 
 # PSU variance
 tab_psu <- dat3[!is.na(value), .(n = .N, sd_y_psu = sd(value_y)),
@@ -230,6 +232,23 @@ estimICC(sample(varname_list, 1))
 #
 # dat_ICC_test[, cor(ICC, ICCd)]
 # qplot(x = ICC, y = ICCd, data = dat_ICC_test)
+
+# R9_HU_D2
+# dat_ICC_R9_HU_D2 <- lapply(grep("R9_HU_D2", varname_list, value = T), estimICC)
+# dat_ICC_R9_HU_D2 <- rbindlist(dat_ICC_R9_HU_D2)
+# dat_ICC_R9_HU_D2
+#
+# dat_ICC_R9_HU_D2[, .N]
+# dat_ICC_R9_HU_D2[, mean(ICC)]
+# dat_ICC_R9_HU_D2[, median(ICC)]
+#
+# x <- dat_ICC_R9_HU_D2[, ICC]
+# x <- sort(c(x, rep(0, 75 - length(x))))
+# x
+#
+# mean(x)
+# median(x)
+# x[round(75 / 2)]
 
 
 # Real estimation for all rounds and countries

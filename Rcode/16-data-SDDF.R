@@ -20,10 +20,23 @@ gc()
 # ESS data ####
 set_email("martins.liberts+ess@gmail.com")
 
-import_sddf_country(country = "Albania", rounds = 6)
-import_sddf_country(country = "Finland", rounds = 6)
-
-class(try(1 / "1"))
+# import_sddf_country(country = "Bulgaria", rounds = 5, format = "stata")
+# import_sddf_country(country = "Bulgaria", rounds = 5, format = "spss")
+#
+# import_sddf_country(country = "Albania", rounds = 6)
+# import_sddf_country(country = "Belgium", rounds = 6)
+# import_sddf_country(country = "Finland", rounds = 6)
+#
+# import_sddf_country(country = "Albania", rounds = 6, format = "spss")
+# import_sddf_country(country = "Belgium", rounds = 6, format = "spss")
+# import_sddf_country(country = "Finland", rounds = 6, format = "spss")
+#
+# import_all_sddf_cntrounds(country = "Albania")
+#
+# import_sddf_country(country = "Albania", rounds = 6)
+#
+# download_sddf_country(country = "Albania", rounds = 6, output_dir = "~/data")
+# haven::read_stata(file = "~/data/ESS_Albania/ESS6/ESS6_AL_SDDF.dta")
 
 # Import SDDF for the rounds 1:8
 t1 <- Sys.time()
@@ -32,12 +45,12 @@ t1 <- Sys.time()
 dat <- lapply(show_countries(), function(cntry) {
   lapply(show_sddf_cntrounds(cntry), function(rnd) {
     cat(cntry, "round", rnd, "\n")
-    sddf <- try(import_sddf_country(country = cntry, rounds = rnd,
-                                    format = "spss"))
-    if (class(sddf) == "try-error") {
-      print(sddf)
-      return(NULL)
-    }
+    sddf <- import_sddf_country(country = cntry, rounds = rnd)
+    # sddf <- try(import_sddf_country(country = cntry, rounds = rnd))
+    # if (class(sddf) == "try-error") {
+    #   print(sddf)
+    #   return(NULL)
+    # }
     setDT(sddf)
     sddf[, essround := rnd]
     return(sddf)
@@ -49,15 +62,73 @@ t2 - t1
 # Time difference of 16.56868 mins
 # Time difference of 17.84737 mins (2020-12-10)
 
-
 # Convert to one level list
 dat <- unlist(dat, recursive = F)
 
+
+
+# # Backup option if import fails
+# # Download all SDDFs for the rounds 1:8
+# t1 <- Sys.time()
+#
+# # Double loop through all countries and rounds
+# dat <- lapply(show_countries(), function(cntry) {
+#   lapply(show_sddf_cntrounds(cntry), function(rnd) {
+#     cat(cntry, "round", rnd, "\n")
+#     download_sddf_country(country = cntry, rounds = rnd,
+#                           output_dir = "~/data", format = "spss")
+#   })
+# })
+#
+# t2 <- Sys.time()
+# t2 - t1
+#
+# x <- list.files(path = "~/data", pattern = "(por|sav)$",
+#                 full.names = T, recursive = T)
+#
+# length(x) == length(list.files(path = "~/data", pattern = "zip$",
+#                                full.names = T, recursive = T))
+#
+# read_spss_safe <- function(file, quiet = FALSE) {
+#   cat(file, "\n")
+#   x <- try(haven::read_spss(file = file), silent = TRUE)
+#   if ("try-error" %in% class(x)) {
+#     if (!quiet) {
+#       warning("File ", basename(file), "
+#               read with `foreign::read.spss` instead of `haven::read_sav`")
+#     }
+#     x <- foreign::read.spss(file = file, to.data.frame = TRUE)
+#   }
+#
+#   setDT(x)
+#
+#   setnames(x, tolower(names(x)))
+#   setnames(x, old = "stratify", new = "stratum", skip_absent = T)
+#
+#   x <- haven::zap_formats(x)
+#   x <- haven::zap_label(x)
+#   x <- haven::zap_labels(x)
+#   x <- haven::zap_missing(x)
+#   x <- haven::zap_widths(x)
+#
+#   x[, essround := as.integer(substring(basename(file), 4, 4))]
+#
+#   return(x[])
+# }
+#
+# read_spss_safe(x[1])
+# read_spss_safe(x[2])
+#
+# dat <- lapply(x, read_spss_safe)
+# # warnings()
+
+
 # Combine into one data.table
 datSDDF1 <- rbindlist(dat, use.names = T, fill = T)
+datSDDF1
 
 datSDDF1[, .N, keyby = .(essround)]
-datSDDF1[essround == 6, .N, keyby = .(cntry)]
+datSDDF1[, .N, keyby = .(cntry)]
 
 
 # Round 9
@@ -91,8 +162,7 @@ n1 <- datSDDF9[cntry == "HU", .N, keyby = .(stratum, psu)][, .N]
 n2 <- datSDDF9[cntry == "HU", .N, keyby = .(psu)][, .N]
 
 if (n1 != n2) {
-  require(haven)
-  datSDDF9HU2 <- read_stata(file = "data/HU/HU_psu_corrected_feb21.dta")
+  datSDDF9HU2 <- haven::read_stata(file = "data/HU/HU_psu_corrected_feb21.dta")
   setDT(datSDDF9HU2)
 
   datSDDF9HU1 <- datSDDF9[cntry == "HU"]

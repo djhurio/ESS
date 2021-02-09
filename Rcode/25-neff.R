@@ -78,8 +78,9 @@ pl_b <- ggplot(dat_b) +
   geom_col(aes(x = essround, y = b,
                fill = essround, linetype = domain),
            colour = "black", position = "dodge") +
-  ggtitle("ESS avearge cluster size (b)") +
-  facet_wrap(~ cntry)
+  ggtitle(label = "ESS avearge cluster size (b)", subtitle = Sys.time()) +
+  facet_wrap(~ cntry) +
+  theme_bw()
 
 
 # deff_p
@@ -111,8 +112,11 @@ pl_deff_p <- ggplot(dat_deff_p) +
   geom_col(aes(x = essround, y = deff_p,
                fill = essround, linetype = domain),
            colour = "black", position = "dodge") +
-  ggtitle("ESS design effect due to difference in sampling probabilities (deff_p)") +
-  facet_wrap(~ cntry)
+  ggtitle(label = paste("ESS design effect due to differencies",
+                        "in sampling probabilities (deff_p)"),
+          subtitle = Sys.time()) +
+  facet_wrap(~ cntry) +
+  theme_bw()
 
 
 # Merge
@@ -174,7 +178,9 @@ plot_ICC_varname_domain <- function(x) {
                          mid  = "white",
                          high = scales::muted("red")) +
     facet_wrap(~ varname) +
-    ggtitle(paste("Intraclass correlation coefficient (ICC or ρ) by variable for", x)) +
+    ggtitle(label = paste("Intraclass correlation coefficient (ICC or ρ)",
+                          "by variable for", x),
+            subtitle = Sys.time()) +
     theme_bw()
 }
 
@@ -230,7 +236,8 @@ tab_deff[, sum(n_variable)]
 tab_deff[, all.equal(deff_c, 1 + (b - 1) * ICC)]
 tab_deff[, all.equal(deff, deff_p * deff_c)]
 
-# Effective sample should be recalculated as it is not a linear function from deff
+# Effective sample should be recalculated
+# as it is not a linear function from deff
 tab_deff[, n_eff := n_resp / deff]
 
 
@@ -245,7 +252,8 @@ pl_ICC_test1 <- ggplot(data = tab_deff[b > 1],
   geom_point(mapping = aes(colour = cntry)) +
   geom_abline(slope = 1, intercept = 0) +
   coord_equal() + xlim(c(0, m)) + ylim(c(0, m)) +
-  ggtitle("ICC: mean vs median")
+  ggtitle(label = "ICC: mean vs median", subtitle = Sys.time()) +
+  theme_bw()
 
 pl_ICC_test2 <- pl_ICC_test1 +
   geom_text(mapping = aes(label = paste(cntry, essround, sep = "_")),
@@ -260,15 +268,19 @@ ggsave(filename = "results/pl_ICC_test2.png", plot = pl_ICC_test2)
 pl_ICC <- ggplot(tab_deff) +
   geom_col(aes(x = essround, y = ICC, fill = essround, linetype = domain),
            colour = "black", position = "dodge") +
-  ggtitle("ESS Intraclass correlation coefficient (ICC or ρ)") +
-  facet_wrap(~ cntry)
+  ggtitle(label = "ESS Intraclass correlation coefficient (ICC or ρ)",
+          subtitle = Sys.time()) +
+  facet_wrap(~ cntry) +
+  theme_bw()
 
 pl_deff_c <- ggplot(tab_deff) +
   geom_col(aes(x = essround, y = deff_c,
                fill = essround, linetype = domain),
            colour = "black", position = "dodge") +
-  ggtitle("ESS design effect due to clustering (deff_c)") +
-  facet_wrap(~ cntry)
+  ggtitle(label = "ESS design effect due to clustering (deff_c)",
+          subtitle = Sys.time()) +
+  facet_wrap(~ cntry) +
+  theme_bw()
 
 tab_deff[, sapply(.SD, class)]
 tab_deff_long <- melt.data.table(data = tab_deff, id.vars = key(tab_deff))
@@ -310,15 +322,17 @@ tab_deff_2[, assessment := (n_eff >= min_n_eff)]
 pl_deff <- ggplot(tab_deff_2) +
   geom_col(aes(x = essround, y = deff, fill = essround),
            colour = "black", position = "dodge") +
-  ggtitle("ESS design effect (deff)") +
-  facet_wrap(~ cntry)
+  ggtitle(label = "ESS design effect (deff)", subtitle = Sys.time()) +
+  facet_wrap(~ cntry) +
+  theme_bw()
 
 pl_neff <- ggplot(tab_deff_2) +
   geom_col(aes(x = essround, y = n_eff, fill = assessment),
            colour = "black", position = "dodge") +
   geom_hline(mapping = aes(yintercept = min_n_eff)) +
-  ggtitle("ESS effective sample size (n_eff)") +
-  facet_wrap(~ cntry)
+  ggtitle(label = "ESS effective sample size (n_eff)", subtitle = Sys.time()) +
+  facet_wrap(~ cntry) +
+  theme_bw()
 
 
 # # Aggregate to round
@@ -362,7 +376,8 @@ plot_cntry_dashboard_2 <- function(x) {
     geom_hline(mapping = aes(yintercept = min_n_eff),
                data = tab_deff_long_2[cntry == x & variable == "n_eff"]) +
     facet_wrap(~ variable, scales = "free_y") +
-    ggtitle(paste("Sample design dashboard for", x)) +
+    ggtitle(label = paste("Sample design dashboard for", x),
+            subtitle = Sys.time()) +
     theme_bw()
 }
 
@@ -375,6 +390,37 @@ plot_cntry_dashboard_2 <- function(x) {
 cntry_list <- sort(unique(dat_deff$cntry))
 length(cntry_list)
 
+
+
+
+
+# ICC exploring
+
+dat_deff[, mean(ICC)]
+dat_deff[, mean(ICC), keyby = .(type)]
+
+dcast.data.table(data = dat_deff, formula = essround ~ type,
+                 fun.aggregate = mean, value.var = "ICC")
+
+dcast.data.table(data = dat_deff, formula = cntry ~ type,
+                 fun.aggregate = mean, value.var = "ICC")
+
+tab <- dat_deff[, .(mean_ICC = mean(ICC)),
+                keyby = .(essround, cntry, domain, type)]
+
+pl_ICC_var_type <- ggplot(data = tab,
+                          mapping = aes(x = type, y = mean_ICC,
+                                        fill = type, linetype = domain)) +
+  geom_col(colour = "black", alpha = 1, position = "dodge") +
+  facet_grid(essround ~ cntry) +
+  theme_bw() +
+  theme(axis.text.x = element_blank()) +
+  ggtitle(label = "Mean ICC by variable type", subtitle = Sys.time())
+
+ggsave(filename = "results/plot_ICC_by_variable_type.pdf",
+       plot = pl_ICC_var_type, width = 16, height = 9)
+ggsave(filename = "results/plot_ICC_by_variable_type.png",
+       plot = pl_ICC_var_type, width = 16, height = 9)
 
 # Save for all countries ###
 
@@ -420,6 +466,8 @@ export_cntry_results <- function(x) {
 }
 
 # export_cntry_results("LV")
+
+dir.create(path = "results/cntry", showWarnings = F)
 
 for (i in cntry_list) {
   cat(i, ": ")

@@ -261,9 +261,11 @@ t1 <- Sys.time()
 dat_ICC <- lapply(varname_list, estimICC)
 t2 <- Sys.time()
 
-t2 - t1
+print("Time difference:")
+print(t2 - t1)
 # Time difference of 42.20912 mins
 # Time difference of 35.21384 mins (2020-12-10)
+# Time difference of 1.332371 hours (2021-02-05)
 
 # Options (stop at error - default)
 options(warn = 1)
@@ -343,5 +345,3 @@ dat_ICC[, varname  := substring(varname_ext, 10)]
 #         keyby = .(varname)][, .N, keyby = .(ICC1 > ICC2)]
 #
 # fwrite(x = dat_ICC, file = "results/ICC1_ICC2.csv")
-
-save(dat3, file = "~/data/dat3.Rdata")

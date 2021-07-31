@@ -1,6 +1,12 @@
 # ESS data ####
 # Contact form data
+#
+# Only for R9!
+#
+# Check if the latest CF data file is used!
 # https://www.europeansocialsurvey.org/data/download_contact_form.html
+#
+# Current version: 3.0
 
 
 # Options ####
@@ -8,13 +14,17 @@ options(encoding = "UTF-8")
 options(max.print = 10e3)
 options(datatable.integer64 = "character")
 options(datatable.keepLeadingZeros = TRUE)
+options(datatable.logical01 = TRUE)
 
 
 # Packages
-require(data.table)
-require(haven)
-require(openxlsx)
-require(essurvey)
+library(data.table)
+library(haven)
+library(openxlsx)
+library(essurvey)
+library(rvest)
+library(countrycode)
+library(ggplot2)
 
 
 # Reset ####
@@ -23,50 +33,105 @@ gc()
 
 
 # Load main data file (R9)
-data.main <- import_rounds(rounds = 9, ess_email = "martins.liberts+ess@gmail.com")
+# Only respondents
+data.main <- import_rounds(rounds = 9,
+                           ess_email = "martins.liberts+ess@gmail.com")
 setDT(data.main, key = c("essround", "cntry", "idno"))
 
 data.main[, .N, keyby = .(essround, cntry, idno)]
-data.main <- data.main[, .(essround, cntry, idno, dweight, pweight, resp = T)]
+data.main <- data.main[, .(essround, cntry, idno, domain, dweight, pweight,
+                           resp = T)]
 
 
 # Load domain variable (missing at the main survey data file)
+# All sampled units!
+#
+# This edition 2.0!
+# Some missmatch with CF 3.0 is expected
 data.domain <- read_stata("data/R9/ess9_domain_all.dta")
 setDT(data.domain)
 
-data.domain <- data.domain[, .(essround = 9, cntry, idno = idno_scrambled, domain)]
+data.domain <- data.domain[, .(essround = 9, cntry, idno = idno_scrambled,
+                               domain = as.integer(domain))]
 setkey(data.domain, essround, cntry, idno)
 
-anyDuplicated(data.domain, by = key(data.domain))
+if (anyDuplicated(data.domain, by = key(data.domain)) > 0) {
+  stop("Duplicates in data.domain")
+}
+
+
+
+data.domain
+data.main[, .(essround, cntry, idno, domain)]
 
 data.domain[, .N, keyby = .(domain)]
-data.domain[domain == "", domain := "1"]
+data.domain[is.na(domain), domain := 0L]
 data.domain[, .N, keyby = .(domain)]
+
+data.main[, .N, keyby = .(domain)]
+data.main[is.na(domain), domain := 0L]
+data.main[, .N, keyby = .(domain)]
+
+
+# Merge with the main survey data file (respondents only)
+key(data.domain)
+key(data.main)
+
+data.domain <- merge(data.domain,
+                     data.main[, .(essround, cntry, idno, domain)],
+                     all = T)
+
+data.main[, domain := NULL]
+
+data.domain[, .N, keyby = .(domain.x, domain.y)]
+
+# Merge domain variable
+# Priority is a survey data file
+data.domain[!is.na(domain.y), domain := domain.y]
+data.domain[ is.na(domain.y), domain := domain.x]
+
+data.domain[, .N, keyby = .(domain, domain.x, domain.y)]
+
+data.domain[, domain.x := NULL]
+data.domain[, domain.y := NULL]
+
+key(data.domain)
 
 
 # Load contact form data (R9)
-data.cf <- read_spss("data/CF/ESS9CFe02.sav")
-setDT(data.cf, key = c("essround", "cntry", "idno"))
-
+fn <- max(list.files(path = "data/CF", pattern = "ESS9CFe[0-9]{2}.sav",
+                     full.names = T))
+cat("Integrated Contact form data file:", fn, "\n")
+data.cf <- read_spss(fn)
 data.cf <- zap_labels(data.cf)
+rm(fn)
+
+setDT(data.cf, key = c("essround", "cntry", "idno"))
 
 data.cf[, .N]
 
-sapply(data.cf[, .(essround, cntry, idno, file.cf = T)], class)
-sapply(data.domain[, .(essround, cntry, idno, file.cf = T)], class)
+grep("dom", names(data.cf), value = T)
 
-data.test <- merge(data.cf[, .(essround, cntry, idno, file.cf = T)],
+sapply(data.cf[,     .(essround, cntry, idno, file.cf = T)],     class)
+sapply(data.domain[, .(essround, cntry, idno, file.domain = T)], class)
+
+data.test <- merge(data.cf[,     .(essround, cntry, idno, file.cf = T)],
                    data.domain[, .(essround, cntry, idno, file.domain = T)],
                    by = c("essround", "cntry", "idno"),
                    all = T)
 
-data.test[is.na(file.cf), file.cf := F]
+data.test[is.na(file.cf),     file.cf := F]
 data.test[is.na(file.domain), file.domain := F]
 
 data.test[, .N, keyby = .(file.cf, file.domain)]
 data.test[!file.cf | !file.domain]
+data.test[!file.cf | !file.domain, .N]
+data.test[!file.cf | !file.domain, .N, keyby = .(essround, cntry)]
 
-data.cf[1:10, .(essround, cntry, idno)]
+rm(data.test)
+gc()
+
+data.cf[    1:10, .(essround, cntry, idno)]
 data.domain[1:10, .(essround, cntry, idno)]
 
 
@@ -182,8 +247,10 @@ data.cf[, .N, keyby = .(nhhmem)]
 
 
 # get file '<<file>>'
-#     /KEEP CNTRY IDNO RESULB1 to RESULB69 outnic1 to outnic69 outinval interva defectcf.
-varlist <- grep("essround|cntry|idno|resulb|outnic|outinval|interva|defectcf|numhh|hhselect|nhhmem",
+#     /KEEP CNTRY IDNO RESULB1 to RESULB69 outnic1 to outnic69 outinval interva
+#     defectcf.
+varlist <- grep(paste("essround|cntry|idno|resulb|outnic|outinval|interva",
+                      "defectcf|numhh|hhselect|nhhmem", sep = "|"),
                 names(data.cf), value = T)
 length(varlist)
 
@@ -544,14 +611,16 @@ data.cf[, .N, keyby = .(finalcode, codents)]
 # (43, 51, 61-67)
 # OUTCOME=2 otherwise
 
-data.cf <- merge(data.cf, data.domain, by = c("essround", "cntry", "idno"), all.x = T)
+data.cf <- merge(data.cf, data.domain,
+                 by = c("essround", "cntry", "idno"), all.x = T)
 
 data.cf[, .N, keyby = .(domain)]
 data.cf[is.na(domain), .N, keyby = .(essround, cntry)]
-data.cf[is.na(domain), domain := "1"]
+data.cf[is.na(domain), domain := 0L]
 data.cf[, .N, keyby = .(domain)]
 
-data.cf <- merge(data.cf, data.main,   by = c("essround", "cntry", "idno"), all.x = T)
+data.cf <- merge(data.cf, data.main,
+                 by = c("essround", "cntry", "idno"), all.x = T)
 
 data.cf[, .N, keyby = .(resp)]
 data.cf[is.na(resp), resp := F]
@@ -595,7 +664,50 @@ tab.cf[, ri := n_ineligibles / n_gross]
 tab.cf[, rr := n_net / (n_gross - n_ineligibles)]
 
 tab.cf
+tab.cf[domain == 0L]
 tab.cf[essround == 9 & cntry == "LT"]
+tab.cf[essround == 9 & cntry == "IT"]
+tab.cf[essround == 9 & cntry == "ME"]
+
+tab.cf[is.na(domain), .(cntry, n_net, rr = round(rr * 100, 1))]
+
+
+
+# Net-sample size and total response rate should match with:
+# https://www.europeansocialsurvey.org/data/deviations_9.html
+
+doc <- read_html("https://www.europeansocialsurvey.org/data/deviations_9.html")
+tab.ess <- el(html_table(doc))
+rm(doc)
+
+setDT(tab.ess)
+
+str(tab.ess)
+
+names(tab.ess)
+setnames(tab.ess, c("country", "fwperiod", "numint", "resprate", "dev"))
+tab.ess[, dev := NULL]
+
+tab.ess[grep("\\*", country)]
+tab.ess[, country := gsub("\\*", "", country)]
+tab.ess[grep("\\*", country)]
+
+tab.ess[, numint := as.integer(gsub(" ", "", numint))]
+
+tab.ess[, cntry := countrycode(sourcevar = country,
+                               origin = "country.name", destination = "iso2c")]
+
+
+tab.test <- merge(tab.cf[is.na(domain)], tab.ess, by = "cntry", all = T)
+
+tab.test[, all.equal(n_net, numint)]
+tab.test[, all.equal(round(rr * 100, 1), resprate)]
+
+tab.test <- tab.test[, .(essround, cntry, country,
+                         resprate, rr = round(rr * 100, 1))]
+
+tab.test[order(abs(resprate - rr))]
+
 
 
 # deff_p according to nhhmem
@@ -612,14 +724,26 @@ tab.deff_p_nhhmem <- tab.deff_p_nhhmem[!is.na(deff_p_nhhmem)]
 
 tab.deff_p_nhhmem
 
+x <- tab.deff_p_nhhmem[, c(deff_p, deff_p_nhhmem)]
+x <- c(floor(min(x) * 10) / 10, ceiling(max(x) * 10) / 10)
+
+ggplot(data = tab.deff_p_nhhmem,
+       mapping = aes(x = deff_p_nhhmem, y = deff_p)) +
+  geom_point() +
+  geom_abline() +
+  geom_label(mapping = aes(label = paste0(cntry, domain))) +
+  coord_fixed(xlim = x, ylim = x) +
+  theme_bw()
+
 
 # Save ####
 
 fwrite(    tab.cf, file = "tables/ESS9-sample-size-rr-ri.csv")
-write.xlsx(tab.cf, file = "tables/ESS9-sample-size-rr-ri.xlsx")
+write.xlsx(tab.cf, file = "tables/ESS9-sample-size-rr-ri.xlsx", overwrite = T)
 
 fwrite(    tab.deff_p_nhhmem, file = "tables/ESS9-tab.deff_p_nhhmem.csv")
-write.xlsx(tab.deff_p_nhhmem, file = "tables/ESS9-tab.deff_p_nhhmem.xlsx")
+write.xlsx(tab.deff_p_nhhmem, file = "tables/ESS9-tab.deff_p_nhhmem.xlsx",
+           overwrite = T)
 
 fwrite(    tab.codents, file = "tables/ESS9-tab.codents.csv")
-write.xlsx(tab.codents, file = "tables/ESS9-tab.codents.xlsx")
+write.xlsx(tab.codents, file = "tables/ESS9-tab.codents.xlsx", overwrite = T)

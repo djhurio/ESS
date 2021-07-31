@@ -88,6 +88,22 @@ essround,cntry,codents,outcome,N
 9,DE,W: Invalid interview,2,21
 9,DE,X: (partial) Interview,1,2356
 9,DE,X: (partial) Interview,2,10
+9,DK,B: Refusal by respondent,2,1058
+9,DK,C: Refusal by proxy or before selection,2,95
+9,DK,E: Noncontact or moved to unknown destination or still in country,2,189
+9,DK,F: Language barrier,2,91
+9,DK,G: Mentally / physically unable / ill / sick (short and long term),2,128
+9,DK,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,30
+9,DK,I: Address not traceable,2,1
+9,DK,"K: Derelict or demolished house, not yet build or not occupied",3,1
+9,DK,L: Other ineligible,3,4
+9,DK,M: R moved out of the country,3,28
+9,DK,N: R deceased,3,9
+9,DK,Undefined,1,2
+9,DK,Undefined,2,3
+9,DK,W: Invalid interview,2,2
+9,DK,X: (partial) Interview,1,1570
+9,DK,X: (partial) Interview,2,1
 9,EE,-: Contact form missing,2,13
 9,EE,B: Refusal by respondent,2,621
 9,EE,C: Refusal by proxy or before selection,2,25
@@ -192,6 +208,21 @@ essround,cntry,codents,outcome,N
 9,IE,N: R deceased,3,3
 9,IE,W: Invalid interview,2,1
 9,IE,X: (partial) Interview,1,2216
+9,IS,B: Refusal by respondent,2,636
+9,IS,C: Refusal by proxy or before selection,2,17
+9,IS,E: Noncontact or moved to unknown destination or still in country,2,366
+9,IS,F: Language barrier,2,60
+9,IS,G: Mentally / physically unable / ill / sick (short and long term),2,68
+9,IS,"H: Broken appointment, respondent unavailable, no interviews for other reasons",2,89
+9,IS,I: Address not traceable,2,24
+9,IS,J: Address not residential,3,3
+9,IS,"K: Derelict or demolished house, not yet build or not occupied",3,2
+9,IS,L: Other ineligible,3,16
+9,IS,M: R moved out of the country,3,46
+9,IS,N: R deceased,3,5
+9,IS,Undefined,2,3
+9,IS,X: (partial) Interview,1,861
+9,IS,X: (partial) Interview,2,1
 9,IT,B: Refusal by respondent,2,1158
 9,IT,C: Refusal by proxy or before selection,2,241
 9,IT,E: Noncontact or moved to unknown destination or still in country,2,848

@@ -39,16 +39,14 @@ data.main <- import_rounds(rounds = 9,
 setDT(data.main, key = c("essround", "cntry", "idno"))
 
 data.main[, .N, keyby = .(essround, cntry, idno)]
-data.main <- data.main[, .(essround, cntry, idno, domain, dweight, pweight,
-                           resp = T)]
+data.main <- data.main[, .(essround, cntry, idno, domain,
+                           dweight, pweight, anweight, resp = T)]
 
 
 # Load domain variable (missing at the main survey data file)
 # All sampled units!
-#
-# This edition 2.0!
-# Some missmatch with CF 3.0 is expected
-data.domain <- read_stata("data/R9/ess9_domain_all.dta")
+
+data.domain <- read_stata("data/R9/domain_all_e03.dta")
 setDT(data.domain)
 
 data.domain <- data.domain[, .(essround = 9, cntry, idno = idno_scrambled,
@@ -73,29 +71,38 @@ data.main[is.na(domain), domain := 0L]
 data.main[, .N, keyby = .(domain)]
 
 
-# Merge with the main survey data file (respondents only)
+# Test: Merge with the main survey data file (respondents only)
 key(data.domain)
 key(data.main)
 
-data.domain <- merge(data.domain,
-                     data.main[, .(essround, cntry, idno, domain)],
-                     all = T)
+data.test <- merge(data.main[, .(essround, cntry, idno, domain)],
+                   data.domain, all.x = T)
 
-data.main[, domain := NULL]
+data.test[, .N, keyby = .(domain.x, domain.y)]
+data.test[is.na(domain.x) | is.na(domain.y) | domain.x != domain.y, .N,
+          keyby = .(essround, cntry, domain.x, domain.y)]
 
-data.domain[, .N, keyby = .(domain.x, domain.y)]
 
-# Merge domain variable
-# Priority is a survey data file
-data.domain[!is.na(domain.y), domain := domain.y]
-data.domain[ is.na(domain.y), domain := domain.x]
+# data.domain <- merge(data.domain,
+#                      data.main[, .(essround, cntry, idno, domain)],
+#                      all = T)
+#
+# data.domain[, .N, keyby = .(domain.x, domain.y)]
+#
+# # Merge domain variable
+# # Priority is a survey data file
+# data.domain[!is.na(domain.y), domain := domain.y]
+# data.domain[ is.na(domain.y), domain := domain.x]
+#
+# data.domain[, .N, keyby = .(domain, domain.x, domain.y)]
+#
+# data.domain[, domain.x := NULL]
+# data.domain[, domain.y := NULL]
+#
+# key(data.domain)
 
-data.domain[, .N, keyby = .(domain, domain.x, domain.y)]
 
-data.domain[, domain.x := NULL]
-data.domain[, domain.y := NULL]
 
-key(data.domain)
 
 
 # Load contact form data (R9)
@@ -117,16 +124,19 @@ sapply(data.domain[, .(essround, cntry, idno, file.domain = T)], class)
 
 data.test <- merge(data.cf[,     .(essround, cntry, idno, file.cf = T)],
                    data.domain[, .(essround, cntry, idno, file.domain = T)],
-                   by = c("essround", "cntry", "idno"),
-                   all = T)
+                   by = c("essround", "cntry", "idno"), all.x = T)
 
 data.test[is.na(file.cf),     file.cf := F]
 data.test[is.na(file.domain), file.domain := F]
 
 data.test[, .N, keyby = .(file.cf, file.domain)]
+
 data.test[!file.cf | !file.domain]
 data.test[!file.cf | !file.domain, .N]
-data.test[!file.cf | !file.domain, .N, keyby = .(essround, cntry)]
+data.test[!file.cf | !file.domain, .N,
+          keyby = .(essround, cntry, file.cf, file.domain)]
+
+data.test[!file.domain & cntry != "FR"]
 
 rm(data.test)
 gc()
@@ -619,6 +629,8 @@ data.cf[is.na(domain), .N, keyby = .(essround, cntry)]
 data.cf[is.na(domain), domain := 0L]
 data.cf[, .N, keyby = .(domain)]
 
+
+data.main[, domain := NULL]
 data.cf <- merge(data.cf, data.main,
                  by = c("essround", "cntry", "idno"), all.x = T)
 
@@ -682,7 +694,7 @@ rm(doc)
 
 setDT(tab.ess)
 
-str(tab.ess)
+# str(tab.ess)
 
 names(tab.ess)
 setnames(tab.ess, c("country", "fwperiod", "numint", "resprate", "dev"))

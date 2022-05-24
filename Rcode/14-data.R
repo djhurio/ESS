@@ -74,6 +74,28 @@ variables[!(is.available)]
 
 
 
+# Variable selection to reduce the size of a data.table
+
+# Survey design variables and weights
+varnames.design <- c("essround", "edition", "proddate", "cntry", "idno",
+                     "dweight", "pspwght", "pweight", "anweight")
+
+
+# Helper function to subselect necessary variables
+foo <- function(x) {
+  name_sel <- intersect(names(x), c(varnames.design, variables$varname))
+  x[, c(name_sel), with = F]
+}
+
+# Keep only necessary variables
+dat <- lapply(dat, foo)
+
+# dat <- dat[, c(varnames.design, variables$varname), with = F]
+# # dim(dat)
+# gc()
+
+
+
 # Combine data from all rounds in one data.table
 dat <- rbindlist(dat, use.names = T, fill = T)
 class(dat)
@@ -109,18 +131,6 @@ fwrite(variables, file = "tables/variables.csv", quote = T)
 # head(names(dat), 10)
 # tail(names(dat), 10)
 
-
-# Variable selection to reduce the size of a data.table
-
-# Survey design variables and weights
-varnames.design <- c("essround", "edition", "proddate", "cntry", "idno",
-                     "dweight", "pspwght", "pweight", "anweight")
-
-
-# Keep only necessary variables
-dat <- dat[, c(varnames.design, variables$varname), with = F]
-# dim(dat)
-gc()
 
 
 # Check the edition and production dates
@@ -158,3 +168,5 @@ dcast.data.table(data = dat, formula = cntry ~ paste0("R", essround),
 # Save data files for the next step
 save(dat, file = "data/dat.Rdata")
 save(variables, file = "data/variables.Rdata")
+
+fwrite(dat, file = "data-pub/dat.csv")

@@ -179,8 +179,10 @@ n2 <- datSDDF9[cntry == "HU", .N, keyby = .(psu)][, .N]
 
 if (n1 != n2) stop("Check HU round 9")
 
-rm(datSDDF9HU, datSDDF9HU1, datSDDF9HU2)
-rm(n1, n2)
+if (n1 != n2) {
+  rm(datSDDF9HU, datSDDF9HU1, datSDDF9HU2)
+  rm(n1, n2)
+}
 
 # Combine SDDF for rounds 1:9
 
@@ -223,3 +225,4 @@ datSDDF[, lapply(.SD, class)]
 
 # Save for the next step
 save(datSDDF, file = "data/datSDDF.Rdata")
+fwrite(datSDDF, file = "data-pub/datSDDF.csv")
